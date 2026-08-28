@@ -1,0 +1,16 @@
+/*
+ * PhishGuard Content Script Styles
+ *
+ * Minimal CSS injected into the page for the phishing overlay.
+ * SECURITY: No external stylesheets loaded — all inline to comply with CSP.
+ */
+
+#phishguard-alert-overlay {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: phishguard-fadein 0.3s ease-out;
+}
+
+@keyframes phishguard-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

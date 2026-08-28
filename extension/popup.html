@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhishGuard</title>
+  <style>
+    /* ============================================================
+       PhishGuard Popup Stylesheet
+       SECURITY: No external resources loaded — fully self-contained.
+       All values set via CSS, no inline JS execution.
+       ============================================================ */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      min-height: 200px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      padding: 16px 20px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header .shield {
+      font-size: 28px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .header .version {
+      font-size: 11px;
+      color: #64748b;
+      margin-left: auto;
+    }
+
+    /* --- Login Section --- */
+    .login-section {
+      padding: 20px;
+    }
+
+    .login-section h2 {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .input-group {
+      margin-bottom: 10px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background-color: #1e293b;
+      color: #e2e8f0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus {
+      border-color: #3b82f6;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: #2563eb;
+    }
+
+    .btn-scan {
+      background-color: #22c55e;
+      color: #ffffff;
+      margin-top: 12px;
+    }
+
+    .btn-scan:hover {
+      background-color: #16a34a;
+    }
+
+    .btn-logout {
+      background-color: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      margin-top: 8px;
+    }
+
+    .btn-logout:hover {
+      background-color: #1e293b;
+    }
+
+    .error-text {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .link-text {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .link-text a {
+      color: #3b82f6;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .link-text a:hover {
+      text-decoration: underline;
+    }
+
+    /* --- Dashboard Section --- */
+    .dashboard {
+      padding: 16px 20px;
+    }
+
+    .user-info {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+
+    .user-info strong {
+      color: #e2e8f0;
+    }
+
+    /* --- Scan Result --- */
+    .scan-result {
+      padding: 16px 20px;
+    }
+
+    .status-card {
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .status-card.safe {
+      background: linear-gradient(135deg, #065f46, #064e3b);
+      border: 1px solid #22c55e;
+    }
+
+    .status-card.phishing {
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
+      border: 1px solid #ef4444;
+    }
+
+    .status-card.unknown {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      border: 1px solid #64748b;
+    }
+
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .status-text {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .status-card.safe .status-text {
+      color: #4ade80;
+    }
+
+    .status-card.phishing .status-text {
+      color: #f87171;
+    }
+
+    .status-card.unknown .status-text {
+      color: #94a3b8;
+    }
+
+    .confidence-bar {
+      width: 100%;
+      height: 6px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .scanned-url {
+      font-size: 11px;
+      color: #64748b;
+      word-break: break-all;
+      margin-top: 8px;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+    }
+
+    /* --- History List --- */
+    .history-section {
+      padding: 0 20px 16px;
+    }
+
+    .history-section h3 {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      background-color: #1e293b;
+    }
+
+    .history-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .history-dot.safe {
+      background-color: #22c55e;
+    }
+
+    .history-dot.phishing {
+      background-color: #ef4444;
+    }
+
+    .history-url {
+      font-size: 12px;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* --- Loading Spinner --- */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #475569;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 16px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #1e293b;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======== HEADER ======== -->
+  <div class="header">
+    <span class="shield">🛡</span>
+    <h1>PhishGuard</h1>
+    <span class="version">v1.0</span>
+  </div>
+
+  <!-- ======== LOGIN FORM ======== -->
+  <div id="loginSection" class="login-section">
+    <h2>Sign In</h2>
+    <div class="input-group">
+      <label for="usernameInput">Username</label>
+      <input type="text" id="usernameInput" placeholder="Enter username" autocomplete="off" />
+    </div>
+    <div class="input-group">
+      <label for="passwordInput">Password</label>
+      <input type="password" id="passwordInput" placeholder="Enter password" />
+    </div>
+    <p id="loginError" class="error-text">Invalid credentials</p>
+    <button id="loginBtn" class="btn btn-primary">Sign In</button>
+    <p class="link-text">
+      Don't have an account? <a id="showRegisterLink">Register</a>
+    </p>
+  </div>
+
+  <!-- ======== REGISTER FORM ======== -->
+  <div id="registerSection" class="login-section hidden">
+    <h2>Create Account</h2>
+    <div class="input-group">
+      <label for="regUsernameInput">Username</label>
+      <input type="text" id="regUsernameInput" placeholder="Choose a username" autocomplete="off" />
+    </div>
+    <div class="input-group">
+      <label for="regEmailInput">Email</label>
+      <input type="email" id="regEmailInput" placeholder="you@example.com" />
+    </div>
+    <div class="input-group">
+      <label for="regPasswordInput">Password</label>
+      <input type="password" id="regPasswordInput" placeholder="Min 8 characters" />
+    </div>
+    <p id="registerError" class="error-text">Registration failed</p>
+    <button id="registerBtn" class="btn btn-primary">Create Account</button>
+    <p class="link-text">
+      Already have an account? <a id="showLoginLink">Sign In</a>
+    </p>
+  </div>
+
+  <!-- ======== DASHBOARD (Post-Login) ======== -->
+  <div id="dashboardSection" class="dashboard hidden">
+    <div class="user-info">
+      Logged in as <strong id="displayUsername"></strong>
+    </div>
+
+    <button id="scanNowBtn" class="btn btn-scan">Scan Current Page</button>
+    <div id="scanLoading" class="spinner hidden"></div>
+
+    <!-- Scan result card -->
+    <div id="scanResultContainer" class="scan-result hidden">
+      <div id="statusCard" class="status-card unknown">
+        <div id="statusIcon" class="status-icon">❓</div>
+        <div id="statusText" class="status-text">Scanning...</div>
+        <div class="confidence-bar">
+          <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
+        </div>
+        <div id="scannedUrl" class="scanned-url"></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Recent History -->
+    <div class="history-section">
+      <h3>Recent Scans</h3>
+      <div id="historyList"></div>
+    </div>
+
+    <button id="logoutBtn" class="btn btn-logout">Sign Out</button>
+  </div>
+
+  <!-- ======== POPUP SCRIPT ======== -->
+  <script src="popup.js"></script>
+</body>
+</html>
