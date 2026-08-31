@@ -1,0 +1,280 @@
+{
+  "version": 1,
+  "generated": "2026-01-01T00:00:00Z",
+  "description": "Pre-built visual fingerprints for known-good brands. Each entry holds a signature color palette (dominant brand colors derived from the canonical brand) plus metadata. Live screenshot fingerprints captured at runtime are cached separately by visual_brand.py and layered on top of these static palettes.",
+  "brands": {
+    "facebook": {
+      "canonical_url": "https://www.facebook.com",
+      "homepage_url": "https://www.facebook.com",
+      "signature_colors": ["#1877F2", "#FFFFFF", "#F0F2F5"],
+      "logo_hint": "blue circular f on light background",
+      "palette": [["#1877F2", 0.56], ["#FFFFFF", 0.30], ["#F0F2F5", 0.14]]
+    },
+    "instagram": {
+      "canonical_url": "https://www.instagram.com",
+      "homepage_url": "https://www.instagram.com",
+      "signature_colors": ["#E1306C", "#F77737", "#833AB4", "#FFFFFF"],
+      "logo_hint": "gradient camera glyph, white text on dark",
+      "palette": [["#E1306C", 0.35], ["#F77737", 0.25], ["#833AB4", 0.20], ["#FFFFFF", 0.20]]
+    },
+    "whatsapp": {
+      "canonical_url": "https://www.whatsapp.com",
+      "homepage_url": "https://www.whatsapp.com",
+      "signature_colors": ["#25D366", "#075E54", "#FFFFFF"],
+      "logo_hint": "green phone bubble, dark teal accents",
+      "palette": [["#25D366", 0.45], ["#075E54", 0.25], ["#FFFFFF", 0.30]]
+    },
+    "google": {
+      "canonical_url": "https://www.google.com",
+      "homepage_url": "https://www.google.com",
+      "signature_colors": ["#4285F4", "#EA4335", "#FBBC05", "#34A853", "#FFFFFF"],
+      "logo_hint": "multicolor wordmark on white",
+      "palette": [["#FFFFFF", 0.55], ["#4285F4", 0.18], ["#EA4335", 0.12], ["#FBBC05", 0.08], ["#34A853", 0.07]]
+    },
+    "gmail": {
+      "canonical_url": "https://mail.google.com",
+      "homepage_url": "https://mail.google.com",
+      "signature_colors": ["#EA4335", "#FBBC05", "#4285F4", "#34A853", "#FFFFFF"],
+      "logo_hint": "multicolor M envelope",
+      "palette": [["#EA4335", 0.30], ["#FBBC05", 0.20], ["#4285F4", 0.20], ["#34A853", 0.15], ["#FFFFFF", 0.15]]
+    },
+    "youtube": {
+      "canonical_url": "https://www.youtube.com",
+      "homepage_url": "https://www.youtube.com",
+      "signature_colors": ["#FF0000", "#282828", "#FFFFFF"],
+      "logo_hint": "red play button on dark",
+      "palette": [["#FF0000", 0.30], ["#282828", 0.45], ["#FFFFFF", 0.25]]
+    },
+    "paypal": {
+      "canonical_url": "https://www.paypal.com",
+      "homepage_url": "https://www.paypal.com",
+      "signature_colors": ["#003087", "#009CDE", "#012169", "#FFFFFF"],
+      "logo_hint": "double-P blue mark",
+      "palette": [["#003087", 0.35], ["#009CDE", 0.20], ["#012169", 0.15], ["#FFFFFF", 0.30]]
+    },
+    "amazon": {
+      "canonical_url": "https://www.amazon.com",
+      "homepage_url": "https://www.amazon.com",
+      "signature_colors": ["#FF9900", "#146EB4", "#232F3E", "#FFFFFF"],
+      "logo_hint": "smile arrow over orange on dark navy",
+      "palette": [["#FF9900", 0.22], ["#146EB4", 0.18], ["#232F3E", 0.35], ["#FFFFFF", 0.25]]
+    },
+    "apple": {
+      "canonical_url": "https://www.apple.com",
+      "homepage_url": "https://www.apple.com",
+      "signature_colors": ["#000000", "#F5F5F7", "#FFFFFF"],
+      "logo_hint": "apple logo, mostly monochrome minimal",
+      "palette": [["#000000", 0.45], ["#F5F5F7", 0.35], ["#FFFFFF", 0.20]]
+    },
+    "microsoft": {
+      "canonical_url": "https://www.microsoft.com",
+      "homepage_url": "https://www.microsoft.com",
+      "signature_colors": ["#F25022", "#7FBA00", "#00A4EF", "#FFB900"],
+      "logo_hint": "four-color squared window",
+      "palette": [["#F25022", 0.25], ["#7FBA00", 0.25], ["#00A4EF", 0.25], ["#FFB900", 0.25]]
+    },
+    "microsoftonline": {
+      "canonical_url": "https://login.microsoftonline.com",
+      "homepage_url": "https://login.microsoftonline.com",
+      "signature_colors": ["#00A4EF", "#0078D4", "#FFFFFF"],
+      "logo_hint": "azure/microsoft blue login",
+      "palette": [["#00A4EF", 0.25], ["#0078D4", 0.25], ["#FFFFFF", 0.50]]
+    },
+    "office": {
+      "canonical_url": "https://www.office.com",
+      "homepage_url": "https://www.office.com",
+      "signature_colors": ["#D83B01", "#00A4EF", "#FFB900", "#FFFFFF"],
+      "logo_hint": "office suite orange/blue",
+      "palette": [["#D83B01", 0.30], ["#00A4EF", 0.20], ["#FFB900", 0.15], ["#FFFFFF", 0.35]]
+    },
+    "netflix": {
+      "canonical_url": "https://www.netflix.com",
+      "homepage_url": "https://www.netflix.com",
+      "signature_colors": ["#E50914", "#000000", "#D43A46"],
+      "logo_hint": "red N on black",
+      "palette": [["#E50914", 0.28], ["#000000", 0.60], ["#D43A46", 0.12]]
+    },
+    "linkedin": {
+      "canonical_url": "https://www.linkedin.com",
+      "homepage_url": "https://www.linkedin.com",
+      "signature_colors": ["#0A66C2", "#FFFFFF", "#F3F2EF"],
+      "logo_hint": "blue in square on light",
+      "palette": [["#0A66C2", 0.30], ["#FFFFFF", 0.45], ["#F3F2EF", 0.25]]
+    },
+    "twitter": {
+      "canonical_url": "https://twitter.com",
+      "homepage_url": "https://twitter.com",
+      "signature_colors": ["#1D9BF0", "#FFFFFF", "#0F1419"],
+      "logo_hint": "blue X on light",
+      "palette": [["#1D9BF0", 0.25], ["#FFFFFF", 0.45], ["#0F1419", 0.30]]
+    },
+    "x": {
+      "canonical_url": "https://x.com",
+      "homepage_url": "https://x.com",
+      "signature_colors": ["#000000", "#E7E9EA", "#FFFFFF"],
+      "logo_hint": "black X on white",
+      "palette": [["#000000", 0.30], ["#E7E9EA", 0.35], ["#FFFFFF", 0.35]]
+    },
+    "github": {
+      "canonical_url": "https://github.com",
+      "homepage_url": "https://github.com",
+      "signature_colors": ["#24292F", "#FFFFFF", "#0969DA"],
+      "logo_hint": "dark octocat, white accents",
+      "palette": [["#24292F", 0.40], ["#FFFFFF", 0.40], ["#0969DA", 0.20]]
+    },
+    "dropbox": {
+      "canonical_url": "https://www.dropbox.com",
+      "homepage_url": "https://www.dropbox.com",
+      "signature_colors": ["#0061FF", "#47525D", "#F7F9FA"],
+      "logo_hint": "blue open box on light",
+      "palette": [["#0061FF", 0.30], ["#47525D", 0.30], ["#F7F9FA", 0.40]]
+    },
+    "adobe": {
+      "canonical_url": "https://www.adobe.com",
+      "homepage_url": "https://www.adobe.com",
+      "signature_colors": ["#FA0F00", "#EB1000", "#FFFFFF"],
+      "logo_hint": "red A mark",
+      "palette": [["#FA0F00", 0.35], ["#EB1000", 0.25], ["#FFFFFF", 0.40]]
+    },
+    "ebay": {
+      "canonical_url": "https://www.ebay.com",
+      "homepage_url": "https://www.ebay.com",
+      "signature_colors": ["#E53238", "#0064D2", "#F5AF02", "#86B817", "#FFFFFF"],
+      "logo_hint": "multicolor letters on white",
+      "palette": [["#E53238", 0.22], ["#0064D2", 0.22], ["#F5AF02", 0.16], ["#86B817", 0.14], ["#FFFFFF", 0.26]]
+    },
+    "chase": {
+      "canonical_url": "https://www.chase.com",
+      "homepage_url": "https://www.chase.com",
+      "signature_colors": ["#117ACA", "#0B5394", "#FFFFFF", "#F7F7F7"],
+      "logo_hint": "blue octagon on white",
+      "palette": [["#117ACA", 0.30], ["#0B5394", 0.20], ["#FFFFFF", 0.50]]
+    },
+    "wellsfargo": {
+      "canonical_url": "https://www.wellsfargo.com",
+      "homepage_url": "https://www.wellsfargo.com",
+      "signature_colors": ["#D71E28", "#CC092F", "#FCB90B", "#FFFFFF"],
+      "logo_hint": "red and yellow stagecoach",
+      "palette": [["#D71E28", 0.30], ["#CC092F", 0.15], ["#FCB90B", 0.15], ["#FFFFFF", 0.40]]
+    },
+    "bankofamerica": {
+      "canonical_url": "https://www.bankofamerica.com",
+      "homepage_url": "https://www.bankofamerica.com",
+      "signature_colors": ["#012169", "#EB1C2D", "#FFFFFF"],
+      "logo_hint": "blue flag, red accents on white",
+      "palette": [["#012169", 0.25], ["#EB1C2D", 0.10], ["#FFFFFF", 0.65]]
+    },
+    "payoneer": {
+      "canonical_url": "https://www.payoneer.com",
+      "homepage_url": "https://www.payoneer.com",
+      "signature_colors": ["#FF6200", "#F25100", "#FFFFFF"],
+      "logo_hint": "orange payoneer mark on white",
+      "palette": [["#FF6200", 0.35], ["#F25100", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "coinbase": {
+      "canonical_url": "https://www.coinbase.com",
+      "homepage_url": "https://www.coinbase.com",
+      "signature_colors": ["#0052FF", "#1652F0", "#FFFFFF"],
+      "logo_hint": "blue coin on white",
+      "palette": [["#0052FF", 0.40], ["#1652F0", 0.20], ["#FFFFFF", 0.40]]
+    },
+    "binance": {
+      "canonical_url": "https://www.binance.com",
+      "homepage_url": "https://www.binance.com",
+      "signature_colors": ["#F0B90B", "#181A20", "#FFFFFF"],
+      "logo_hint": "yellow diamond on near-black",
+      "palette": [["#F0B90B", 0.30], ["#181A20", 0.50], ["#FFFFFF", 0.20]]
+    },
+    "steam": {
+      "canonical_url": "https://store.steampowered.com",
+      "homepage_url": "https://store.steampowered.com",
+      "signature_colors": ["#66C0F4", "#1B2838", "#2A475E", "#C7D5E0"],
+      "logo_hint": "blue steam circle on dark navy",
+      "palette": [["#66C0F4", 0.20], ["#1B2838", 0.45], ["#2A475E", 0.20], ["#C7D5E0", 0.15]]
+    },
+    "spotify": {
+      "canonical_url": "https://www.spotify.com",
+      "homepage_url": "https://www.spotify.com",
+      "signature_colors": ["#1DB954", "#191414", "#FFFFFF"],
+      "logo_hint": "green circle on dark",
+      "palette": [["#1DB954", 0.35], ["#191414", 0.35], ["#FFFFFF", 0.30]]
+    },
+    "fedex": {
+      "canonical_url": "https://www.fedex.com",
+      "homepage_url": "https://www.fedex.com",
+      "signature_colors": ["#4D148C", "#FF6600", "#FFFFFF"],
+      "logo_hint": "purple/orange fedex letters",
+      "palette": [["#4D148C", 0.35], ["#FF6600", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "usps": {
+      "canonical_url": "https://www.usps.com",
+      "homepage_url": "https://www.usps.com",
+      "signature_colors": ["#333366", "#E71921", "#FFFFFF"],
+      "logo_hint": "navy eagle, red accent",
+      "palette": [["#333366", 0.35], ["#E71921", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "dhl": {
+      "canonical_url": "https://www.dhl.com",
+      "homepage_url": "https://www.dhl.com",
+      "signature_colors": ["#FFCC00", "#D40511", "#000000", "#FFFFFF"],
+      "logo_hint": "yellow/red dhl letters",
+      "palette": [["#FFCC00", 0.40], ["#D40511", 0.25], ["#000000", 0.10], ["#FFFFFF", 0.25]]
+    },
+    "ups": {
+      "canonical_url": "https://www.ups.com",
+      "homepage_url": "https://www.ups.com",
+      "signature_colors": ["#351C15", "#FFB500", "#FFFFFF"],
+      "logo_hint": "brown shield, gold accent",
+      "palette": [["#351C15", 0.30], ["#FFB500", 0.20], ["#FFFFFF", 0.50]]
+    },
+    "tiktok": {
+      "canonical_url": "https://www.tiktok.com",
+      "homepage_url": "https://www.tiktok.com",
+      "signature_colors": ["#000000", "#25F4EE", "#FE2C55", "#FFFFFF"],
+      "logo_hint": "black note with cyan/red glow",
+      "palette": [["#000000", 0.55], ["#25F4EE", 0.15], ["#FE2C55", 0.15], ["#FFFFFF", 0.15]]
+    },
+    "snapchat": {
+      "canonical_url": "https://www.snapchat.com",
+      "homepage_url": "https://www.snapchat.com",
+      "signature_colors": ["#FFFC00", "#FFFFFF", "#111111"],
+      "logo_hint": "yellow ghost on light",
+      "palette": [["#FFFC00", 0.45], ["#FFFFFF", 0.40], ["#111111", 0.15]]
+    },
+    "telegram": {
+      "canonical_url": "https://telegram.org",
+      "homepage_url": "https://telegram.org",
+      "signature_colors": ["#229ED9", "#2AABEE", "#FFFFFF"],
+      "logo_hint": "blue paper plane",
+      "palette": [["#229ED9", 0.40], ["#2AABEE", 0.25], ["#FFFFFF", 0.35]]
+    },
+    "outlook": {
+      "canonical_url": "https://outlook.live.com",
+      "homepage_url": "https://outlook.live.com",
+      "signature_colors": ["#0078D4", "#0F6CBD", "#FFFFFF"],
+      "logo_hint": "blue envelope",
+      "palette": [["#0078D4", 0.35], ["#0F6CBD", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "icloud": {
+      "canonical_url": "https://www.icloud.com",
+      "homepage_url": "https://www.icloud.com",
+      "signature_colors": ["#0070C9", "#E8F0FE", "#FFFFFF"],
+      "logo_hint": "blue cloud on light",
+      "palette": [["#0070C9", 0.25], ["#E8F0FE", 0.35], ["#FFFFFF", 0.40]]
+    },
+    "zoom": {
+      "canonical_url": "https://zoom.us",
+      "homepage_url": "https://zoom.us",
+      "signature_colors": ["#2D8CFF", "#0B5CFF", "#FFFFFF"],
+      "logo_hint": "blue video camera lens",
+      "palette": [["#2D8CFF", 0.35], ["#0B5CFF", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "whatsappweb": {
+      "canonical_url": "https://web.whatsapp.com",
+      "homepage_url": "https://web.whatsapp.com",
+      "signature_colors": ["#00A884", "#075E54", "#EDEDED"],
+      "logo_hint": "green whatsapp web on light",
+      "palette": [["#00A884", 0.35], ["#075E54", 0.20], ["#EDEDED", 0.45]]
+    }
+  }
+}

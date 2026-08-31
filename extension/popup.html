@@ -320,6 +320,283 @@
       border-top: 1px solid #1e293b;
       margin: 12px 0;
     }
+
+    /* --- Scan Tabs (URL / QR) --- */
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      margin: 10px 0 12px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background-color: #1e293b;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn.active {
+      background-color: #3b82f6;
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    .tab-panel {
+      padding: 4px 0;
+    }
+
+    /* --- Risk Score Meter --- */
+    .risk-meter {
+      margin-top: 14px;
+    }
+
+    .risk-meter .risk-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .risk-meter .risk-value {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .risk-bar {
+      width: 100%;
+      height: 12px;
+      background: linear-gradient(90deg, #22c55e, #eab308 55%, #ef4444);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .risk-marker {
+      position: absolute;
+      top: -3px;
+      width: 6px;
+      height: 18px;
+      background-color: #0f172a;
+      border: 2px solid #ffffff;
+      border-radius: 3px;
+      transform: translateX(-50%);
+      transition: left 0.5s ease;
+    }
+
+    /* --- Explanation / Why --- */
+    .why-section {
+      margin-top: 14px;
+    }
+
+    .why-section h4 {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .why-list {
+      list-style: none;
+    }
+
+    .why-list li {
+      font-size: 12px;
+      color: #cbd5e1;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background-color: rgba(0, 0, 0, 0.2);
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+
+    .why-list li::before {
+      content: "•";
+      color: #3b82f6;
+      margin-right: 6px;
+    }
+
+    /* --- Sandbox Details --- */
+    .sandbox-section {
+      margin-top: 14px;
+      display: none;
+    }
+
+    .sandbox-section h4 {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .sandbox-item {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+
+    .sandbox-item .sb-label {
+      display: block;
+      color: #64748b;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .sandbox-item .sb-bad {
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    .sandbox-item .sb-good {
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    /* --- QR Scanner --- */
+    .qr-dropzone {
+      border: 2px dashed #334155;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+      margin-bottom: 10px;
+    }
+
+    .qr-dropzone:hover {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.08);
+    }
+
+    .qr-dropzone input[type="file"] {
+      display: none;
+    }
+
+    .qr-preview {
+      max-width: 140px;
+      max-height: 140px;
+      border-radius: 8px;
+      margin: 0 auto 10px;
+      display: block;
+    }
+
+    .qr-result-card {
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #e2e8f0;
+      background-color: #1e293b;
+    }
+
+    .qr-result-card.safe { border: 1px solid #22c55e; }
+    .qr-result-card.phishing { border: 1px solid #ef4444; }
+    .qr-result-card.suspicious { border: 1px solid #eab308; }
+
+    .qr-url {
+      font-size: 11px;
+      color: #64748b;
+      word-break: break-all;
+      margin-top: 6px;
+    }
+
+    .danger-banner {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #f87171;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    /* ============================================================
+       Environment Sandbox Dashboard (embedded in popup)
+       Minimal view: Scan URL + Scan QR inputs, results show the
+       Source Node badge and the stats row only.
+       ============================================================ */
+    #envScanPanel {
+      background: #0F1319;
+      border-radius: 10px;
+      padding: 14px;
+      max-height: 520px;
+      overflow-y: auto;
+      color: #FFFFFF;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .env-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .env-brand { display: flex; align-items: center; gap: 8px; }
+    .env-shield { font-size: 20px; }
+    .env-title { font-size: 13px; font-weight: 700; color: #FFFFFF; }
+    .env-subtitle { font-size: 9px; color: #8F9CAE; text-transform: uppercase; letter-spacing: .5px; }
+    .env-matrix {
+      height: 90px; border-radius: 8px; display: grid; place-items: center;
+      background-image:
+        linear-gradient(rgba(16,185,129,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16,185,129,.05) 1px, transparent 1px);
+      background-size: 20px 20px; border: 1px solid #26303E;
+    }
+    .env-matrix-circle {
+      width: 56px; height: 56px; border-radius: 50%; background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.5); display: grid; place-items: center;
+      text-align: center; box-shadow: 0 0 14px rgba(16,185,129,.25);
+    }
+    .env-matrix-circle span { font-size: 9px; font-weight: 600; color: #10B981; line-height: 1.2; }
+    .env-badge-row { text-align: center; margin-top: 10px; }
+    .env-badge {
+      display: inline-block; font-size: 11px; font-weight: 600; color: #00FF66;
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.3);
+      padding: 5px 11px; border-radius: 999px;
+    }
+
+    .env-scanurl { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .env-url-input {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;
+      background-color: #171E28; color: #e2e8f0; font-size: 13px; outline: none;
+    }
+    .env-url-input:focus { border-color: #3b82f6; }
+    .env-url-input::placeholder { color: #64748b; }
+    #envUrlScanBtn { margin-top: 0; }
+
+    .env-qr { margin-bottom: 14px; }
+    .env-qr-drop {
+      border: 1px dashed #334155; border-radius: 10px; padding: 14px;
+      text-align: center; color: #e2e8f0; font-size: 12px; cursor: pointer;
+      background: #171E28;
+    }
+    .env-qr-drop:hover { border-color: #3b82f6; }
+    .env-qr-drop input { display: none; }
+
+    .env-box { background: #171E28; border: 1px solid #232D3B; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .env-box-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #8F9CAE; text-transform: uppercase; margin-bottom: 10px; }
+    .env-results-url { font-size: 11px; color: #8F9CAE; word-break: break-all; margin-bottom: 10px; }
+
+    .env-stats { display: flex; justify-content: space-between; gap: 8px; padding: 12px; background: #171E28; border: 1px solid #232D3B; border-radius: 10px; }
+    .env-stat { flex: 1; text-align: center; }
+    .env-stat-value { font-size: 13px; font-weight: 700; color: #FFFFFF; }
+    .env-stat-value.green { color: #10B981; }
+    .env-stat-label { font-size: 9px; color: #8F9CAE; margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
   </style>
 </head>
 <body>
@@ -377,18 +654,147 @@
       Logged in as <strong id="displayUsername"></strong>
     </div>
 
-    <button id="scanNowBtn" class="btn btn-scan">Scan Current Page</button>
-    <div id="scanLoading" class="spinner hidden"></div>
+    <!-- ===== URL SCAN PANEL (kept hidden — scanning handled in Env Sandbox) ===== -->
+    <div id="urlScanPanel" class="tab-panel hidden">
+      <button id="scanNowBtn" class="btn btn-scan">Scan Current Page (Deep)</button>
+      <div id="scanLoading" class="spinner hidden"></div>
 
-    <!-- Scan result card -->
-    <div id="scanResultContainer" class="scan-result hidden">
-      <div id="statusCard" class="status-card unknown">
-        <div id="statusIcon" class="status-icon">❓</div>
-        <div id="statusText" class="status-text">Scanning...</div>
-        <div class="confidence-bar">
-          <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
+      <!-- Scan result card -->
+      <div id="scanResultContainer" class="scan-result hidden">
+        <div id="statusCard" class="status-card unknown">
+          <div id="statusIcon" class="status-icon">❓</div>
+          <div id="statusText" class="status-text">Scanning...</div>
+          <div class="confidence-bar">
+            <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
+          </div>
+          <div id="scannedUrl" class="scanned-url"></div>
+
+          <!-- Risk Score Meter -->
+          <div id="riskMeter" class="risk-meter hidden">
+            <div class="risk-label-row">
+              <span>Risk Score</span>
+              <span id="riskValue" class="risk-value">0</span>
+            </div>
+            <div class="risk-bar">
+              <div id="riskMarker" class="risk-marker" style="left: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Brand similarity warning -->
+          <div id="brandSection" class="why-section hidden">
+            <h4>Brand Check</h4>
+            <div id="brandText" style="font-size:13px;color:#fbbf24;font-weight:600;"></div>
+          </div>
+
+          <!-- Visual brand similarity -->
+          <div id="visualBrandSection" class="why-section hidden">
+            <h4>Visual Brand Similarity</h4>
+            <div id="visualBrandText" style="font-size:13px;color:#fbbf24;font-weight:600;"></div>
+            <div id="visualBrandSim" style="margin-top:8px;">
+              <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;">
+                <div id="visualBrandBar" style="height:100%;width:0%;border-radius:3px;transition:width .5s ease;"></div>
+              </div>
+              <div id="visualBrandMeta" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
+            </div>
+          </div>
+
+          <!-- Why / Explanation -->
+          <div id="whySection" class="why-section">
+            <h4>Why this result?</h4>
+            <ul id="whyList" class="why-list"></ul>
+          </div>
+
+          <!-- Sandbox details -->
+          <div id="sandboxSection" class="sandbox-section">
+            <h4>Page Content Analysis (Sandbox)</h4>
+            <div id="sandboxGrid" class="sandbox-grid"></div>
+          </div>
+
+          <!-- Redirect chain -->
+          <div id="redirectSection" class="why-section hidden">
+            <h4>Redirect Chain</h4>
+            <ul id="redirectList" class="why-list"></ul>
+          </div>
         </div>
-        <div id="scannedUrl" class="scanned-url"></div>
+      </div>
+    </div>
+
+    <!-- ===== QR SCAN PANEL ===== -->
+    <div id="qrScanPanel" class="tab-panel hidden">
+      <div id="qrDropzone" class="qr-dropzone">
+        <div>📷 Click to upload a QR code image</div>
+        <div style="font-size:11px; margin-top:6px;">We decode it and check the embedded URL for phishing (quishing).</div>
+        <input type="file" id="qrFileInput" accept="image/*" />
+      </div>
+      <div id="qrPreviewWrap" class="hidden" style="text-align:center">
+        <img id="qrPreview" class="qr-preview" alt="QR preview" />
+      </div>
+      <div id="qrLoading" class="spinner hidden"></div>
+      <p id="qrError" class="error-text">QR scan failed</p>
+      <div id="qrResults"></div>
+    </div>
+
+    <!-- ===== ENVIRONMENT SANDBOX PANEL (default view) ===== -->
+    <div id="envScanPanel" class="tab-panel">
+      <!-- Header Row -->
+      <div class="env-header">
+        <div class="env-brand">
+          <div class="env-shield">🛡️</div>
+          <div>
+            <div class="env-title">Target URL Environment</div>
+            <div class="env-subtitle">Phishing Sandbox · Live Probe</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scan URL input -->
+      <div class="env-scanurl">
+        <input type="text" id="envUrlInput" placeholder="Enter a URL to scan (https://...)" class="env-url-input" spellcheck="false" />
+        <button id="envUrlScanBtn" class="btn btn-scan">Scan URL</button>
+        <div id="envUrlLoading" class="spinner hidden"></div>
+      </div>
+
+      <!-- Scan QR upload -->
+      <div class="env-qr">
+        <div id="envQrDropzone" class="env-qr-drop">
+          <div>📷 Scan a QR Code</div>
+          <div style="font-size:10px; margin-top:4px; color:#64748b;">Upload an image and we check the embedded URL.</div>
+          <input type="file" id="envQrFileInput" accept="image/*" />
+        </div>
+        <div id="envQrLoading" class="spinner hidden"></div>
+        <p id="envQrError" class="error-text">QR scan failed</p>
+      </div>
+
+      <!-- Results (shown after a scan) -->
+      <div id="envResults" class="hidden">
+        <div class="env-results-url" id="envResUrl"></div>
+
+        <!-- Source Node -->
+        <div class="env-box">
+          <div class="env-box-label">Source Node</div>
+          <div class="env-matrix">
+            <div class="env-matrix-circle"><span>CLIENT<br/>MATRIX</span></div>
+          </div>
+          <div class="env-badge-row">
+            <span class="env-badge" id="envVerdict">Status Verdict: —</span>
+          </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="env-stats">
+          <div class="env-stat">
+            <div class="env-stat-value" id="envChecks">0 Probes</div>
+            <div class="env-stat-label">Checks Run</div>
+          </div>
+          <div class="env-stat">
+            <div class="env-stat-value green" id="envSignals">0 Flagged</div>
+            <div class="env-stat-label">Signals Found</div>
+          </div>
+          <div class="env-stat">
+            <div class="env-stat-value" id="envConfidence">0.0%</div>
+            <div class="env-stat-label">Confidence</div>
+          </div>
+        </div>
       </div>
     </div>
 

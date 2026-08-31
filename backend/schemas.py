@@ -83,6 +83,10 @@ class ScanRequest(BaseModel):
         max_length=2048,
         description="URL to analyze for phishing indicators.",
     )
+    analysis: bool = Field(
+        False,
+        description="If true, also fetch and inspect the page content (URL sandbox).",
+    )
 
     @field_validator("url")
     @classmethod
@@ -94,6 +98,17 @@ class ScanRequest(BaseModel):
         return v
 
 
+class QRScanRequest(BaseModel):
+    """
+    QR code phishing scan — the image bytes are sent as base64 in JSON.
+    SECURITY: base64 text is validated/decoded server-side; the decoded
+    payload is run through the exact same URL risk engine as normal scans.
+    """
+    image_base64: str = Field(..., min_length=16, max_length=20_000_000,
+                              description="Base64-encoded image containing a QR code.")
+    scan_url: bool = Field(True, description="Also run sandbox content analysis on decoded URL.")
+
+
 class ScanResponse(BaseModel):
     """Scan result returned to the client."""
     id: int
@@ -101,6 +116,39 @@ class ScanResponse(BaseModel):
     prediction: str
     confidence: float
     scanned_at: datetime
+    risk_score: int = Field(0, description="Risk score from 0 (safe) to 100 (phishing)")
+    explanation: list[str] = Field(
+        default_factory=list,
+        description="Human-readable reasons why the URL was given this verdict.",
+    )
+    sandbox: Optional[dict] = Field(
+        default=None,
+        description="Optional content analysis of the fetched page.",
+    )
+    redirect_chain: list[dict] = Field(
+        default_factory=list,
+        description="Sequence of URLs/status codes the request followed (0+ hops).",
+    )
+    risk_factors: list[dict] = Field(
+        default_factory=list,
+        description="Structured risk factors (code/name/severity/description).",
+    )
+    brand: Optional[dict] = Field(
+        default=None,
+        description="External brand-similarity / reputation check result.",
+    )
+    visual_brand: Optional[dict] = Field(
+        default=None,
+        description="Visual brand-similarity result from screenshot + image comparison.",
+    )
+    analysis_depth: Optional[str] = Field(
+        default=None,
+        description="Auto-detection depth used: fast | deep | forensic.",
+    )
+    auto_escalated: Optional[bool] = Field(
+        default=False,
+        description="True when AI auto-escalated the analysis depth beyond what was requested.",
+    )
 
     model_config = {"from_attributes": True}
 
@@ -126,3 +174,31 @@ class DashboardResponse(BaseModel):
     phishing_count: int
     safe_count: int
     history: list[ScanHistoryItem]
+
+
+# ---------------------------------------------------------------------------
+# QR Scan Schemas
+# ---------------------------------------------------------------------------
+
+class QRScanResponse(BaseModel):
+    """
+    Result of scanning a QR-code image upload.
+    Returns the decoded QR payload(s) plus the phishing verdict(s).
+    """
+    decoded: list[str] = Field(
+        default_factory=list,
+        description="Raw strings decoded from the QR code(s).",
+    )
+    urls_found: list[str] = Field(
+        default_factory=list,
+        description="URLs extracted from the QR payload.",
+    )
+    results: list[ScanResponse] = Field(
+        default_factory=list,
+        description="Risk analysis for each extracted URL (same format as /scan).",
+    )
+    summary: str = Field("", description="Overall verdict summary.")
+    no_urls: bool = Field(
+        False,
+        description="True if the QR decoded but contained no http/https URL.",
+    )

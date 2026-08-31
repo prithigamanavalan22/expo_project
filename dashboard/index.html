@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Target URL Environment Sandbox Dashboard</title>
+<style>
+  /* ============================================================
+     PhishGuard — Target URL Environment Sandbox Dashboard
+     Premium dark-mode component. Clean flexbox/grid layout,
+     rounded corners, neon status indicators. Embeddable in
+     Flask (static) or React (copy markup + CSS).
+     ============================================================ */
+
+  :root {
+    --bg: #0F1319;
+    --panel: #171E28;
+    --border: #232D3B;
+    --border-soft: #1E2834;
+    --text: #FFFFFF;
+    --muted: #8F9CAE;
+    --neon: #10B981;      /* safe / neon green */
+    --neon-bright: #00FF66;
+    --danger: #EF4444;    /* flagged risk */
+    --blue: #3B82F6;      /* active preset / slider */
+    --blue-glass: rgba(59, 130, 246, 0.10);
+    --radius: 10px;
+    --radius-sm: 8px;
+    font-size: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .pg-dash {
+    width: 100%;
+    max-width: 1180px;
+    background: var(--bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 28px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 1. Header Row ---------- */
+  .pg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 26px;
+  }
+
+  .pg-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .pg-shield {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--blue-glass), rgba(16,185,129,.08));
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    color: var(--neon);
+    flex-shrink: 0;
+  }
+
+  .pg-shield svg { width: 24px; height: 24px; }
+
+  .pg-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: var(--text);
+  }
+
+  .pg-subtitle {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .pg-url-field {
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 16px;
+    min-width: 320px;
+    letter-spacing: 0.2px;
+    outline: none;
+    text-align: right;
+  }
+  .pg-url-field::placeholder { color: var(--muted); opacity: 0.9; }
+
+  /* ---------- 2. Metrics Core Panel ---------- */
+  .pg-core {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 1fr;
+    gap: 18px;
+  }
+
+  .pg-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    min-height: 200px;
+  }
+
+  .pg-box-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* --- Box 1: Source Node (glow grid + Client Matrix) --- */
+  .pg-matrix {
+    position: relative;
+    height: 128px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background-image:
+      linear-gradient(rgba(16,185,129,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16,185,129,.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+    border: 1px solid var(--border-soft);
+    display: grid;
+    place-items: center;
+  }
+
+  .pg-matrix-circle {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: rgba(16,185,129,.08);
+    border: 1px solid rgba(16,185,129,.5);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    box-shadow: 0 0 24px rgba(16,185,129,.25);
+  }
+  .pg-matrix-circle span {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--neon);
+    letter-spacing: 0.4px;
+    line-height: 1.2;
+  }
+
+  .pg-status-badge {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--neon-bright);
+    background: rgba(16,185,129,.08);
+    border: 1px solid rgba(16,185,129,.3);
+    padding: 7px 14px;
+    border-radius: 999px;
+  }
+
+  /* --- Box 2: Detection Core probes --- */
+  .pg-probes { list-style: none; }
+  .pg-probes li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: var(--text);
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .pg-probes li:last-child { border-bottom: none; }
+  .pg-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--neon);
+    box-shadow: 0 0 8px rgba(16,185,129,.8);
+    flex-shrink: 0;
+  }
+
+  /* --- Box 3: Threat Level (radial semi-arc gauge) --- */
+  .pg-gauge-wrap { position: relative; height: 128px; }
+
+  .pg-gauge svg { display: block; width: 100%; height: 128px; }
+
+  .pg-gauge-center {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    text-align: center;
+  }
+  .pg-gauge-pct {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .pg-gauge-under {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ---------- 3. Statistics Summary Row ---------- */
+  .pg-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin: 26px 0;
+    padding: 18px 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    flex-wrap: wrap;
+  }
+  .pg-stat { flex: 1; min-width: 120px; }
+  .pg-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .pg-stat-value.green { color: var(--neon); }
+  .pg-stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  /* ---------- 4. Environment Profile Presets ---------- */
+  .pg-presets { margin-bottom: 26px; }
+  .pg-presets-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .pg-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pg-pill {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .pg-pill:hover { border-color: var(--blue); color: var(--text); }
+  .pg-pill.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #FFFFFF;
+    box-shadow: 0 4px 16px rgba(59,130,246,.35);
+  }
+
+  /* ---------- 5. Detailed Technical Probe Controls ---------- */
+  .pg-tech {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .pg-tech-item { display: flex; flex-direction: column; gap: 12px; }
+  .pg-tech-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+
+  .pg-toggle-row { display: flex; gap: 10px; }
+  .pg-toggle {
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: default;
+  }
+  .pg-toggle.on {
+    background: var(--neon);
+    border-color: var(--neon);
+    color: #03130A;
+    box-shadow: 0 0 14px rgba(16,185,129,.35);
+  }
+  .pg-toggle.off { opacity: 0.45; }
+
+  /* Sliders */
+  .pg-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .pg-slider {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+  }
+  .pg-slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--fill, 65%);
+    background: linear-gradient(90deg, #2563EB, var(--blue));
+    border-radius: 999px;
+  }
+  .pg-slider-thumb {
+    position: absolute;
+    top: 50%;
+    left: var(--fill, 65%);
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #FFFFFF;
+    border: 3px solid var(--blue);
+    box-shadow: 0 0 12px rgba(59,130,246,.6);
+  }
+  .pg-slider-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 62px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* responsive */
+  @media (max-width: 900px) {
+    .pg-core { grid-template-columns: 1fr; }
+    .pg-header { flex-direction: column; align-items: flex-start; }
+    .pg-url-field { width: 100%; min-width: 0; text-align: left; }
+    .pg-stats { flex-direction: column; align-items: flex-start; }
+    .pg-stat { width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div class="pg-dash" id="pgDashboard">
+
+    <!-- 1. Header Row -->
+    <header class="pg-header">
+      <div class="pg-header-brand">
+        <div class="pg-shield" aria-hidden="true">
+          <!-- shield icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 3l7 2.5v5.2c0 4.6-3 8.2-7 10.3-4-2.1-7-5.7-7-10.3V5.5L12 3z"/>
+            <path d="M9 12l2 2 4-4.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="pg-title">Target URL Environment</div>
+          <div class="pg-subtitle">Phishing Sandbox · Live Probe</div>
+        </div>
+      </div>
+      <input
+        class="pg-url-field"
+        type="text"
+        readonly
+        value="https://trusted-user-login-verification.com"
+        spellcheck="false" />
+    </header>
+
+    <!-- 2. Metrics Core Panel -->
+    <section class="pg-core">
+
+      <!-- Box 1: Source Node -->
+      <div class="pg-box">
+        <div class="pg-box-label">Source Node</div>
+        <div class="pg-matrix">
+          <div class="pg-matrix-circle"><span>CLIENT<br/>MATRIX</span></div>
+        </div>
+        <div style="text-align:center;">
+          <span class="pg-status-badge">Status Verdict: Standard Consumer</span>
+        </div>
+      </div>
+
+      <!-- Box 2: Detection Core -->
+      <div class="pg-box">
+        <div class="pg-box-label">Detection Core</div>
+        <ul class="pg-probes">
+          <li><span class="pg-dot"></span>navigator.webdriver</li>
+          <li><span class="pg-dot"></span>hardwareConcurrency</li>
+          <li><span class="pg-dot"></span>High-Resolution Jitter</li>
+          <li><span class="pg-dot"></span>Domain Reputation</li>
+        </ul>
+      </div>
+
+      <!-- Box 3: Threat Level (radial semi-arc gauge) -->
+      <div class="pg-box">
+        <div class="pg-box-label">Threat Level</div>
+        <div class="pg-gauge-wrap">
+          <div class="pg-gauge">
+            <svg viewBox="0 0 200 120" preserveAspectRatio="none">
+              <!-- track arc -->
+              <path d="M 20 110 A 80 80 0 0 1 180 110"
+                    fill="none" stroke="#232D3B" stroke-width="14" stroke-linecap="round"/>
+              <!-- value arc: 0% risk -> tiny green arc going up-left to the 0 mark -->
+              <path id="pgArc" d="M 20 110 A 80 80 0 0 1 100 110"
+                    fill="none" stroke="#10B981" stroke-width="14" stroke-linecap="round"
+                    stroke-dasharray="251 251" stroke-dashoffset="251"/>
+              <!-- pointer resting at bottom-left (0%) -->
+              <line id="pgNeedle" x1="20" y1="110" x2="26" y2="80"
+                    stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="pg-gauge-center pg-gauge-pct" id="pgGaugePct">0% Risk</div>
+        </div>
+        <div class="pg-gauge-under">Radial Dial · Semi-Arc</div>
+      </div>
+    </section>
+
+    <!-- 3. Statistics Summary Row -->
+    <section class="pg-stats">
+      <div class="pg-stat">
+        <div class="pg-stat-value" id="pgChecks">4 Probes</div>
+        <div class="pg-stat-label">Checks Run</div>
+      </div>
+      <div class="pg-stat">
+        <div class="pg-stat-value green" id="pgSignals">0 Flagged</div>
+        <div class="pg-stat-label">Signals Found</div>
+      </div>
+      <div class="pg-stat">
+        <div class="pg-stat-value" id="pgConfidence">0.0%</div>
+        <div class="pg-stat-label">Confidence</div>
+      </div>
+    </section>
+
+    <!-- 4. Environment Profile Presets -->
+    <section class="pg-presets">
+      <div class="pg-presets-title">Target Profile Environment Preset</div>
+      <div class="pg-pills" id="pgPills">
+        <button class="pg-pill active" data-preset="consumer">Consumer Desktop</button>
+        <button class="pg-pill" data-preset="headless">Headless Scanner</button>
+        <button class="pg-pill" data-preset="sandbox">Analysis Sandbox</button>
+        <button class="pg-pill" data-preset="custom">Custom</button>
+      </div>
+    </section>
+
+    <!-- 5. Detailed Technical Probe Controls -->
+    <section class="pg-tech">
+      <div class="pg-tech-item">
+        <div class="pg-tech-title">navigator.webdriver</div>
+        <div class="pg-toggle-row">
+          <span class="pg-toggle on" id="tgClean">Clean (false)</span>
+          <span class="pg-toggle off" id="tgFlagged">Flagged (true)</span>
+        </div>
+      </div>
+
+      <div class="pg-tech-item">
+        <div class="pg-tech-title">Reported CPU Cores</div>
+        <div class="pg-slider-row">
+          <div class="pg-slider">
+            <div class="pg-slider-fill" style="--fill: 62%;"></div>
+            <div class="pg-slider-thumb" style="--fill: 62%;"></div>
+          </div>
+          <div class="pg-slider-value" id="coresVal">8 Cores</div>
+        </div>
+      </div>
+
+      <div class="pg-tech-item">
+        <div class="pg-tech-title">Execution Loop Jitter</div>
+        <div class="pg-slider-row">
+          <div class="pg-slider">
+            <div class="pg-slider-fill" style="--fill: 4%;"></div>
+            <div class="pg-slider-thumb" style="--fill: 4%;"></div>
+          </div>
+          <div class="pg-slider-value" id="jitterVal">4 ms</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ============================================================
+    // PhishGuard — Dashboard controller (optional interactivity)
+    // Exposes PG_DASH for integration with Flask/React.
+    // ============================================================
+    (function () {
+      "use strict";
+
+      var presets = {
+        consumer: { checks: 4, signals: 0, conf: 0.0, cores: 8, jitter: 4, needle: 0 },
+        headless: { checks: 4, signals: 3, conf: 0.64, cores: 16, jitter: 9, needle: 52 },
+        sandbox:  { checks: 4, signals: 4, conf: 0.90, cores: 8,  jitter: 14, needle: 86 },
+        custom:   { checks: 4, signals: 0, conf: 0.0, cores: 8,  jitter: 4, needle: 0 }
+      };
+
+      var activePreset = "consumer";
+
+      function setStats(signals, conf, checks) {
+        var sign = document.getElementById("pgSignals");
+        var cnf = document.getElementById("pgConfidence");
+        var chk = document.getElementById("pgChecks");
+        if (sign) {
+          sign.textContent = signals + " Flagged";
+          sign.style.color = signals > 0 ? "#EF4444" : "#10B981";
+        }
+        if (cnf) cnf.textContent = (conf * 100).toFixed(1) + "%";
+        if (chk) chk.textContent = checks + " Probes";
+
+        var pct = document.getElementById("pgGaugePct");
+        if (pct) pct.textContent = Math.round(conf * 100) + "% Risk";
+      }
+
+      function setNeedle(pct) {
+        // pct = 0..100 ; map to arc angle from bottom-left (0%) to bottom-right (100%)
+        // 0% -> left endpoint (20,110), 100% -> right endpoint (180,110).
+        var angle = -90 + (pct / 100) * 180; // degrees, CCW from up
+        var r = 80, cx = 100, cy = 110;
+        var a = angle * Math.PI / 180;
+        var x2 = cx + r * Math.cos(a);
+        var y2 = cy + r * Math.sin(a);
+        var needle = document.getElementById("pgNeedle");
+        if (needle) {
+          needle.setAttribute("x1", cx);
+          needle.setAttribute("y1", cy);
+          needle.setAttribute("x2", x2.toFixed(2));
+          needle.setAttribute("y2", y2.toFixed(2));
+        }
+      }
+
+      function applyPreset(name) {
+        var p = presets[name] || presets.consumer;
+        setStats(p.signals, p.conf, p.checks);
+        setNeedle(p.needle);
+
+        var cores = document.getElementById("coresVal");
+        if (cores) cores.textContent = p.cores + " Cores";
+        var jitter = document.getElementById("jitterVal");
+        if (jitter) jitter.textContent = p.jitter + " ms";
+
+        document.querySelectorAll(".pg-pill").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-preset") === name);
+        });
+      }
+
+      var pillBag = document.getElementById("pgPills");
+      if (pillBag) {
+        pillBag.addEventListener("click", function (e) {
+          var btn = e.target.closest(".pg-pill");
+          if (!btn) return;
+          applyPreset(btn.getAttribute("data-preset"));
+        });
+      }
+
+      // initial render
+      applyPreset(activePreset);
+
+      // Public API for external frameworks
+      window.PG_DASH = {
+        applyPreset: applyPreset,
+        setStats: setStats,
+        setNeedle: setNeedle
+      };
+    })();
+  </script>
+</body>
+</html>

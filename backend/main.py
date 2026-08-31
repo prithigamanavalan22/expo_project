@@ -16,10 +16,11 @@ SECURITY CONTROLS IMPLEMENTED:
 
 import os
 import sys
+import base64
 import warnings
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 
 import joblib
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -36,12 +37,20 @@ if PROJECT_ROOT not in sys.path:
 
 from ml_model.feature_extractor import extract_features
 
+from backend.analyzer import compute_report, lexical_risk, pick_verdict
+from backend.ai_detector import analyze_forensic, auto_depth_ftr
 from backend.auth import get_current_user
+from backend.brand_checker import is_known_brand_domain, lookup_url
 from backend.config import settings
 from backend.database import Base, engine, get_db, init_db
+from backend.logging_setup import get_logger, log_scan
 from backend.models import BlacklistedDomain, ScannedURL, User
+from backend.qr_detector import QRDecodeError, decode_qr_from_bytes, extract_urls
+from backend.risk_factors import risk_factors
 from backend.schemas import (
     DashboardResponse,
+    QRScanRequest,
+    QRScanResponse,
     ScanHistoryItem,
     ScanRequest,
     ScanResponse,
@@ -85,9 +94,11 @@ def load_ml_model():
     if os.path.exists(model_path):
         ml_pipeline = joblib.load(model_path)
         print(f"[+] ML model loaded from {model_path}")
+        get_logger().info("STARTUP  ML model loaded from %s", model_path)
     else:
         print(f"[!] WARNING: Model file not found at {model_path}")
         print("[!] Run 'python ml_model/train_model.py' first to train the model.")
+        get_logger().warning("STARTUP  ML model file NOT found at %s", model_path)
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +109,7 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle — init DB and load ML model on boot."""
     init_db()
     load_ml_model()
+    get_logger().info("STARTUP  PhishGuard backend is up and serving on http://127.0.0.1:8000")
     yield
     # Shutdown: cleanup resources if needed
 
@@ -298,8 +310,22 @@ async def scan_url(
     #  This protects ALL users: any future scan of the same domain is instantly
     #  blocked before even reaching the ML model.
     #  The unique constraint on `domain` ensures each domain is added only once.
+    #
+    #  PROTECTION (false-positive prevention): We ONLY auto-blacklist when the
+    #  high-confidence ML verdict is CORROBORATED by real structural phishing
+    #  signals. Our ML model alone can misclassify clean domains (google.com,
+    #  example.com) as phishing, so a high model confidence by itself is NOT
+    #  enough to blacklist a domain for everyone. We also never blacklist a
+    #  known legitimate brand domain.
     # =========================================================================
-    if prediction == "phishing" and confidence >= 0.95 and hostname:
+    lex_points, _lex_reasons = lexical_risk(clean_url, hostname)
+    if (
+        prediction == "phishing"
+        and confidence >= 0.95
+        and hostname
+        and not is_known_brand_domain(hostname)
+        and lex_points >= 20            # corroborating structural red flags
+    ):
         # SECURITY: Parameterized ORM query — check it's not already blacklisted
         already_blacklisted = db.query(BlacklistedDomain).filter(
             BlacklistedDomain.domain == hostname
@@ -309,30 +335,309 @@ async def scan_url(
             # SECURITY: Insert only via ORM — never raw SQL
             new_blacklist = BlacklistedDomain(
                 domain=hostname,
-                reason=f"Auto-blacklisted by ML model (confidence {confidence:.2%})",
+                reason=f"Auto-blacklisted by ML model (confidence {confidence:.2%}, lexical risk {lex_points}/60)",
             )
             db.add(new_blacklist)
             db.commit()
             print(f"[!] BLACKLISTED domain automatically: {hostname}")
+
+    # =========================================================================
+    #  AI AUTO-DETECTION + RISK SCORE + EXPLAINABILITY
+    #  The ai_detector orchestrator fuses ML + lexical + sandbox content + the
+    #  NEW visual brand-similarity (headless screenshot + image comparison).
+    #
+    #  The orchestrator auto-selects the analysis DEPTH based on the URL's risk
+    #  profile (fast / deep / forensic). Even if the client only requested a
+    #  fast scan, a high-risk URL automatically escalates to a forensic pass
+    #  that includes the visual screenshot check — the "AI" auto-detection.
+    # =========================================================================
+    known_brand = bool(hostname) and is_known_brand_domain(hostname)
+
+    forensic = analyze_forensic(
+        url=clean_url,
+        hostname=hostname,
+        ml_prediction=prediction,
+        ml_confidence=confidence,
+        requested_analysis=bool(getattr(body, "analysis", False)),
+    )
+    sandbox_findings = forensic.get("sandbox")
+    visual_result = forensic.get("visual_brand")
+    analysis_depth = forensic.get("depth", "fast")
+    auto_escalated = bool(forensic.get("auto_escalated"))
+
+    report = compute_report(
+        ml_prediction=prediction,
+        ml_confidence=confidence,
+        url=clean_url,
+        parsed_hostname=hostname,
+        blacklisted=False,
+        sandbox=sandbox_findings,
+        known_brand=known_brand,
+        visual=visual_result,
+    )
+
+    # =========================================================================
+    #  VISUAL / EXTERNAL BRAND-REPUTATION CHECK
+    #  Google Safe Browsing (when a key is configured) plus the built-in
+    #  brand-lookalike heuristic. The standalone visual_brand result is already
+    #  fused into the score above via compute_report.
+    # =========================================================================
+    brand_result = lookup_url(clean_url)
+
+    # If the brand check flags a lookalike or phishing, escalate the verdict.
+    if brand_result["verdict"] in ("lookalike", "phishing"):
+        if brand_result["verdict"] == "lookalike":
+            # A lookalike is risky but may still be usable; raise to suspicious
+            # unless it was already worse.
+            if report.score < 50:
+                report.score = max(report.score, 55)
+                report.verdict = pick_verdict(report.score)
+                report.reasons.append(brand_result["reason"])
+        else:
+            # External hard-phishing verdict -> escalate to phishing tier
+            report.score = max(report.score, 85)
+            report.verdict = "phishing"
+            report.reasons.append(brand_result["reason"])
+
+    final_verdict = report.verdict
+
+    # =========================================================================
+    #  STRUCTURED RISK FACTORS
+    #  An exhaustive, machine-readable list of every individual risk found.
+    # =========================================================================
+    factors = risk_factors(
+        url=clean_url,
+        hostname=hostname,
+        sandbox=sandbox_findings,
+        brand=brand_result,
+        blacklisted=False,
+        visual=visual_result,
+    )
 
     # --- Log to database ---
     # SECURITY: clean_url (sanitized) is stored, not raw user input
     log_entry = ScannedURL(
         user_id=current_user.id,
         url=clean_url,
-        prediction=prediction,
+        prediction=final_verdict,
         confidence=round(confidence, 4),
     )
     db.add(log_entry)
     db.commit()
     db.refresh(log_entry)
 
+    # --- File-based scan logging (persists even when server runs hidden) ---
+    _client_ip = request.client.host if request.client else ""
+    log_scan(url=clean_url, prediction=final_verdict,
+             risk_score=report.score, confidence=log_entry.confidence, ip=_client_ip)
+
     return ScanResponse(
         id=log_entry.id,
         url=clean_url,
-        prediction=log_entry.prediction,
+        prediction=final_verdict,
         confidence=log_entry.confidence,
         scanned_at=log_entry.scanned_at,
+        risk_score=report.score,
+        explanation=report.reasons,
+        sandbox=sandbox_findings,
+        redirect_chain=(sandbox_findings or {}).get("redirect_chain", []),
+        risk_factors=factors,
+        brand=brand_result,
+        visual_brand=visual_result,
+        analysis_depth=analysis_depth,
+        auto_escalated=auto_escalated,
+    )
+
+
+# ===========================================================================
+#  QR CODE PHISHING SCAN ENDPOINT (JWT-Protected)
+# ===========================================================================
+
+@app.post(
+    f"{settings.API_V1_PREFIX}/scan/qr",
+    response_model=QRScanResponse,
+    tags=["Scan"],
+)
+@limiter.limit(settings.RATE_LIMIT_SCAN)
+async def scan_qr_code(
+    request: Request,
+    body: QRScanRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db),
+):
+    """
+    Upload a QR-code image (as base64 JSON) and scan the embedded URL(s).
+    Detects 'quishing' — phishing delivered via QR codes.
+
+    SECURITY CONTROLS:
+    - JWT required: only authenticated users can scan QR codes.
+    - Input validation: Pydantic caps base64 size (20MB max).
+    - Image decoded in-memory with OpenCV; nothing is executed from the image.
+    - Decoded URLs run through the SAME risk engine (risk score + explanation)
+      as normal /scan requests.
+    - Rate limiting: shared with the scan endpoint.
+    """
+    # --- Decode base64 image bytes ---
+    try:
+        image_bytes = base64.b64decode(body.image_base64, validate=True)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid base64 image data.",
+        )
+
+    # --- Decode QR code from image ---
+    try:
+        decoded = decode_qr_from_bytes(image_bytes)
+    except QRDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    urls = extract_urls(decoded)
+
+    if not urls:
+        return QRScanResponse(
+            decoded=decoded,
+            urls_found=[],
+            results=[],
+            summary="QR code decoded, but it contained no http/https URL.",
+            no_urls=True,
+        )
+
+    # --- Analyze each extracted URL through the shared risk engine ---
+    results = []
+    for u in urls:
+        clean_u = sanitize_url(u)
+        from urllib.parse import urlparse as _up
+        u_host = _up(u).hostname or ""
+
+        if ml_pipeline is not None:
+            feats = extract_features(u)
+            _int = ml_pipeline.predict([feats])[0]
+            _proba = ml_pipeline.predict_proba([feats])[0]
+            _pred = "phishing" if _int == 1 else "safe"
+            _conf = float(max(_proba))
+        else:
+            _pred = "phishing" if "@" in u or _up(u).hostname and any(c.isdigit() for c in _up(u).hostname) else "safe"
+            _conf = 0.5
+
+        # Blacklist check (parameterized ORM)
+        bl = db.query(BlacklistedDomain).filter(
+            BlacklistedDomain.domain == u_host
+        ).first()
+
+        # Blacklisted domains return immediately — no heavy analysis needed.
+        if bl is not None:
+            results.append(ScanResponse(
+                id=0,
+                url=clean_u,
+                prediction="phishing",
+                confidence=1.0,
+                scanned_at=datetime.now(timezone.utc),
+                risk_score=95,
+                explanation=["This domain is on the known phishing blacklist."],
+                risk_factors=[{
+                    "code": "blacklist", "name": "Known phishing blacklist hit",
+                    "severity": "critical",
+                    "description": "This domain is on the phishing blacklist.",
+                }],
+                brand=lookup_url(clean_u),
+            ))
+            continue
+
+        # AI auto-detection: fuses ML + lexical + sandbox + visual brand check.
+        forensic = analyze_forensic(
+            url=clean_u,
+            hostname=u_host,
+            ml_prediction=_pred,
+            ml_confidence=_conf,
+            requested_analysis=bool(body.scan_url),
+        )
+        sb = forensic.get("sandbox")
+        visual_result = forensic.get("visual_brand")
+        analysis_depth = forensic.get("depth", "fast")
+        auto_escalated = bool(forensic.get("auto_escalated"))
+
+        # Brand-similarity / external reputation check
+        brand_result = lookup_url(clean_u)
+
+        report = compute_report(
+            ml_prediction=_pred,
+            ml_confidence=_conf,
+            url=clean_u,
+            parsed_hostname=u_host,
+            blacklisted=False,
+            sandbox=sb,
+            known_brand=bool(u_host) and is_known_brand_domain(u_host),
+            visual=visual_result,
+        )
+
+        # Escalate for external brand matches. NOTE: a hard external phishing
+        # verdict escalates to the phishing tier (85+), while a merely-lookalike
+        # verdict only bumps to suspicious — mirroring the /scan endpoint.
+        if brand_result["verdict"] in ("lookalike", "phishing"):
+            if brand_result["verdict"] == "phishing":
+                report.score = max(report.score, 85)
+                report.verdict = "phishing"
+                report.reasons.append(brand_result["reason"])
+            elif report.score < 50:
+                report.score = max(report.score, 55)
+                report.verdict = pick_verdict(report.score)
+                report.reasons.append(brand_result["reason"])
+
+        # Structured risk factors
+        factors = risk_factors(
+            url=clean_u,
+            hostname=u_host,
+            sandbox=sb,
+            brand=brand_result,
+            blacklisted=False,
+            visual=visual_result,
+        )
+
+        log_qr = ScannedURL(
+            user_id=current_user.id,
+            url=clean_u,
+            prediction=report.verdict,
+            confidence=round(_conf, 4),
+        )
+        db.add(log_qr)
+        db.commit()
+        db.refresh(log_qr)
+
+        results.append(ScanResponse(
+            id=log_qr.id,
+            url=clean_u,
+            prediction=report.verdict,
+            confidence=log_qr.confidence,
+            scanned_at=log_qr.scanned_at,
+            risk_score=report.score,
+            explanation=report.reasons,
+            sandbox=sb,
+            redirect_chain=(sb or {}).get("redirect_chain", []),
+            risk_factors=factors,
+            brand=brand_result,
+            visual_brand=visual_result,
+            analysis_depth=analysis_depth,
+            auto_escalated=auto_escalated,
+        ))
+
+    # --- Overall summary ---
+    if any(r.prediction == "phishing" for r in results):
+        summary = f"Phishing detected: {sum(1 for r in results if r.prediction == 'phishing')} of {len(results)} URL(s) found in the QR code are phishing."
+    elif any(r.prediction == "suspicious" for r in results):
+        summary = f"Suspicious: {sum(1 for r in results if r.prediction == 'suspicious')} of {len(results)} URL(s) in the QR code need caution."
+    else:
+        summary = f"All {len(results)} URL(s) in the QR code appear safe."
+
+    return QRScanResponse(
+        decoded=decoded,
+        urls_found=urls,
+        results=results,
+        summary=summary,
+        no_urls=False,
     )
 
 

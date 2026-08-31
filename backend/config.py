@@ -27,7 +27,7 @@ class Settings:
     # SECURITY: In production, load SECRET_KEY from a secrets manager (Vault, AWS SM).
     SECRET_KEY: str = os.getenv("SECRET_KEY", "CHANGE-ME-IN-PRODUCTION-USE-RANDOM-64-CHAR-STRING")
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours; auto re-auth on 401 as fallback
 
     # --- Password Hashing ---
     # bcrypt via passlib — never store plaintext passwords.
@@ -59,6 +59,22 @@ class Settings:
     # SECURITY: The extension service worker sends requests from chrome-extension:// origin
     # which cannot be predicted. For local-only API this is safe.
     CORS_ORIGINS: list[str] = ["*"]
+
+    # --- Visual Brand Similarity ---
+    # Whether the visual brand-similarity check (headless screenshot + image
+    # comparison against known brand fingerprints) is enabled. On by default.
+    VISUAL_ANALYSIS_ENABLED: bool = os.getenv("VISUAL_ANALYSIS_ENABLED", "1") == "1"
+    # Max time (seconds) to render a page before screenshotting.
+    SCREENSHOT_TIMEOUT_MS: int = int(os.getenv("SCREENSHOT_TIMEOUT_MS", "10000"))
+    # Directory used to cache downloaded brand homepage screenshots/fingerprints.
+    BRAND_CACHE_DIR: str = os.path.join(
+        Path(__file__).resolve().parent, "brand_cache"
+    )
+    # How long (seconds) a cached brand fingerprint is considered fresh.
+    BRAND_CACHE_TTL: int = int(os.getenv("BRAND_CACHE_TTL", str(24 * 3600)))
+    # Similarity thresholds (0-100) for the visual check.
+    VISUAL_HIGH_THRESHOLD: int = int(os.getenv("VISUAL_HIGH_THRESHOLD", "70"))
+    VISUAL_MODERATE_THRESHOLD: int = int(os.getenv("VISUAL_MODERATE_THRESHOLD", "50"))
 
 
 settings = Settings()

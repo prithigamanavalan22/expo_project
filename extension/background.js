@@ -34,6 +34,63 @@ async function getAuthToken() {
 }
 
 /**
+ * Stored credentials for silent re-authentication when a JWT expires.
+ * Credentials live in chrome.storage.local (encrypted at-rest by the browser)
+ * and are ONLY used to transparently refresh the token on a 401 — never sent
+ * anywhere except the localhost login endpoint.
+ */
+async function getStoredCredentials() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["username", "authPassword"], (result) => {
+      if (result.username && result.authPassword) {
+        resolve({ username: result.username, password: result.authPassword });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+async function setStoredPassword(password) {
+  await chrome.storage.local.set({ authPassword: password });
+}
+
+let reauthInFlight = null;
+
+/**
+ * Silently re-login with stored credentials and cache the fresh token.
+ * Multiple concurrent 401-triggered refreshes share one login call.
+ * Returns the new token, or null if no stored credentials / login fails.
+ */
+async function reAuthenticate() {
+  if (reauthInFlight) return reauthInFlight;
+  reauthInFlight = (async () => {
+    const creds = await getStoredCredentials();
+    if (!creds) return null;
+    try {
+      const resp = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: creds.username, password: creds.password }),
+      });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      if (data.access_token) {
+        await chrome.storage.local.set({ authToken: data.access_token });
+        return data.access_token;
+      }
+      return null;
+    } catch (err) {
+      console.warn("[PhishGuard] Re-auth failed:", err.message);
+      return null;
+    } finally {
+      reauthInFlight = null;
+    }
+  })();
+  return reauthInFlight;
+}
+
+/**
  * Call the PhishGuard API to scan a URL.
  *
  * SECURITY: The request is sent only to the whitelisted localhost origin.
@@ -42,7 +99,7 @@ async function getAuthToken() {
  * @param {string} url - The URL to scan
  * @returns {Promise<Object>} - The scan result from the API
  */
-async function scanURL(url) {
+async function scanURL(url, includeAnalysis = false) {
   const token = await getAuthToken();
 
   const headers = {
@@ -58,13 +115,27 @@ async function scanURL(url) {
     const response = await fetch(`${API_BASE}/scan`, {
       method: "POST",
       headers: headers,
-      body: JSON.stringify({ url: url }),
+      body: JSON.stringify({ url: url, analysis: includeAnalysis }),
     });
 
     if (!response.ok) {
-      // If 401, token expired or missing — user needs to log in via popup
+      // 401 -> token expired/missing. Silently re-login with stored creds
+      // and retry ONCE so a stale token never silently breaks scans.
       if (response.status === 401) {
-        console.warn("[PhishGuard] Authentication required. Please log in.");
+        const newToken = await reAuthenticate();
+        if (newToken) {
+          const retryHeaders = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${newToken}`,
+          };
+          const retry = await fetch(`${API_BASE}/scan`, {
+            method: "POST",
+            headers: retryHeaders,
+            body: JSON.stringify({ url: url, analysis: includeAnalysis }),
+          });
+          if (retry.ok) return await retry.json();
+        }
+        console.warn("[PhishGuard] Authentication required (re-login failed).");
         return { prediction: "unknown", confidence: 0, error: "auth_required" };
       }
       console.error(`[PhishGuard] API error: ${response.status}`);
@@ -80,6 +151,17 @@ async function scanURL(url) {
 }
 
 /**
+ * Scan a decoded QR-code payload (or URL) through the shared risk engine.
+ * Used by the popup's QR scanner tab.
+
+ * @param {string} url - The URL decoded from the QR code
+ * @returns {Promise<Object>} - The scan result
+ */
+async function scanQRURL(url) {
+  return scanURL(url, false);
+}
+
+/**
  * Process a scan result and update storage + content script.
  *
  * SECURITY: Result data is validated before acting on it.
@@ -91,7 +173,7 @@ async function scanURL(url) {
  */
 async function processScanResult(url, result, tabId) {
   // Validate prediction value — only allow expected values
-  const validPredictions = ["safe", "phishing", "unknown"];
+  const validPredictions = ["safe", "suspicious", "phishing", "unknown"];
   const prediction = validPredictions.includes(result.prediction)
     ? result.prediction
     : "unknown";
@@ -100,6 +182,12 @@ async function processScanResult(url, result, tabId) {
     url: url,
     prediction: prediction,
     confidence: result.confidence || 0,
+    risk_score: result.risk_score || 0,
+    explanation: Array.isArray(result.explanation) ? result.explanation : [],
+    sandbox: result.sandbox || null,
+    redirect_chain: Array.isArray(result.redirect_chain) ? result.redirect_chain : [],
+    risk_factors: Array.isArray(result.risk_factors) ? result.risk_factors : [],
+    brand: result.brand || null,
     timestamp: Date.now(),
     scanId: result.id || null,
   };
@@ -119,6 +207,11 @@ async function processScanResult(url, result, tabId) {
         action: "showPhishingAlert",
         url: url,
         confidence: result.confidence,
+        risk_score: result.risk_score,
+        brand: result.brand,
+        topFactors: Array.isArray(result.risk_factors)
+          ? result.risk_factors.slice(0, 4).map((f) => f.name)
+          : [],
       });
     } catch (err) {
       // Content script may not be loaded on chrome:// pages
@@ -183,8 +276,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   recentlyScanned.add(url);
   setTimeout(() => recentlyScanned.delete(url), SCAN_COOLDOWN_MS);
 
-  // Perform the scan
-  const result = await scanURL(url);
+  // Perform the scan — deep analysis so the sandbox (content analysis) is
+  // populated for the popup + overlay. This fetches & inspects page content.
+  const result = await scanURL(url, true);
   await processScanResult(url, result, tabId);
 });
 
@@ -200,7 +294,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (tabs[0] && tabs[0].url) {
           const url = tabs[0].url;
           if (url.startsWith("http://") || url.startsWith("https://")) {
-            const result = await scanURL(url);
+            const result = await scanURL(url, true);
             await processScanResult(url, result, tabs[0].id);
             sendResponse({ success: true, result: result });
           } else {
@@ -222,5 +316,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ lastScan: result.lastScan || null });
     });
     return true;
+  }
+
+  if (message.action === "scanUrlText") {
+    // Scan an arbitrary URL typed/pasted in the popup's Env Sandbox view.
+    const url = typeof message.url === "string" ? message.url.trim() : "";
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      sendResponse({ success: false, error: "Not a valid HTTP/HTTPS URL" });
+      return;
+    }
+    (async () => {
+      try {
+        const result = await scanURL(url, true);
+        if (result && result.prediction) {
+          await processScanResult(url, result, null);
+          sendResponse({ success: true, result: result });
+        } else {
+          sendResponse({ success: false, error: (result && result.error) || "Scan failed" });
+        }
+      } catch (err) {
+        console.error("[PhishGuard] scanUrlText error:", err);
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true; // async sendResponse
   }
 });

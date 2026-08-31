@@ -10,3 +10,10 @@ slowapi==0.1.9
 joblib==1.4.2
 scikit-learn==1.5.2
 numpy==1.26.4
+pandas==2.2.3
+requests==2.34.2
+beautifulsoup4==4.15.0
+opencv-python>=4.8,<6
+Pillow>=10.0.0
+imagehash>=4.3.0
+playwright>=1.40.0

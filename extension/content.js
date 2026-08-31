@@ -22,8 +22,10 @@ const OVERLAY_ID = "phishguard-alert-overlay";
  *
  * @param {string} url - The phishing URL detected
  * @param {number} confidence - The model's confidence score (0-1)
+ * @param {object} extra - { risk_score, brand, topFactors }
  */
-function showPhishingOverlay(url, confidence) {
+function showPhishingOverlay(url, confidence, extra) {
+  extra = extra || {};
   // Remove any existing overlay first
   removeOverlay();
 
@@ -108,12 +110,51 @@ function showPhishingOverlay(url, confidence) {
   // --- Confidence score (cast to Number — prevents injection) ---
   const confidenceValue = Number(confidence) || 0;
   const confidenceText = document.createElement("p");
-  confidenceText.textContent = `Risk Score: ${(confidenceValue * 100).toFixed(1)}%`;
+  confidenceText.textContent = `Model Confidence: ${(confidenceValue * 100).toFixed(1)}%`;
   const ct = confidenceText.style;
   ct.color = "#fbbf24";
   ct.fontSize = "14px";
-  ct.margin = "4px 0 20px";
+  ct.margin = "4px 0 6px";
   card.appendChild(confidenceText);
+
+  // --- Risk score display ---
+  const riskValue = Number(extra.risk_score) || 0;
+  if (riskValue > 0) {
+    const riskText = document.createElement("p");
+    riskText.textContent = `Risk Score: ${riskValue}/100`;
+    const rst = riskText.style;
+    rst.color = "#f87171";
+    rst.fontSize = "16px";
+    rst.fontWeight = "bold";
+    rst.margin = "0 0 12px";
+    card.appendChild(riskText);
+  }
+
+  // --- Brand lookalike warning (visual brand-similarity) ---
+  if (extra.brand && extra.brand.verdict === "lookalike" && extra.brand.brand) {
+    const brandWarn = document.createElement("p");
+    brandWarn.textContent = `This site impersonates "${extra.brand.brand}" (${extra.brand.brand_url}).`;
+    const bw = brandWarn.style;
+    bw.color = "#fbbf24";
+    bw.fontSize = "14px";
+    bw.fontWeight = "bold";
+    bw.margin = "0 0 10px";
+    card.appendChild(brandWarn);
+  }
+
+  // --- Top risk factors ---
+  if (extra.topFactors && extra.topFactors.length) {
+    const factorTitle = document.createElement("p");
+    factorTitle.textContent = "Why it's flagged:";
+    factorTitle.style.cssText = "color:#9ca3af;font-size:12px;margin:0 0 4px;";
+    card.appendChild(factorTitle);
+    extra.topFactors.forEach((name) => {
+      const li = document.createElement("li");
+      li.textContent = "• " + name + "        ";
+      li.style.cssText = "color:#cbd5e1;font-size:13px;text-align:left;margin:2px 0;";
+      card.appendChild(li);
+    });
+  }
 
   // --- Warning message ---
   const warning = document.createElement("p");
@@ -181,7 +222,11 @@ function removeOverlay() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "showPhishingAlert") {
     // SECURITY: confidence is cast to Number to prevent injection
-    showPhishingOverlay(message.url || "Unknown URL", Number(message.confidence) || 0);
+    showPhishingOverlay(message.url || "Unknown URL", Number(message.confidence) || 0, {
+      risk_score: message.risk_score,
+      brand: message.brand,
+      topFactors: Array.isArray(message.topFactors) ? message.topFactors : [],
+    });
     sendResponse({ success: true });
   }
 

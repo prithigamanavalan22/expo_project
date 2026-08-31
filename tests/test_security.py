@@ -180,9 +180,13 @@ def test_api_logic(t: Tester):
     )
 
     # --- Mass assignment: try to register then escalate to admin / inject user_id ---
+    # Use a unique username each run so the test never collides with a
+    # pre-existing account (which would return 409 and fail for the wrong reason).
+    import uuid
+    mas_user = "escalate_" + uuid.uuid4().hex[:8]
     r = api("POST", "/auth/register", {
-        "username": "escalate",
-        "email": "esc@x.com",
+        "username": mas_user,
+        "email": f"esc_{uuid.uuid4().hex[:8]}@x.com",
         "password": "password123",
         "is_admin": True,
         "role": "admin",

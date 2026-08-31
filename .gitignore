@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Runtime data
+backend/*.db
+backend/*.log
+backend/brand_cache/
+
+# ML model outputs (large binaries, regenerate with train_model.py)
+ml_model/model/*.pkl
+ml_model/data/*.csv
+
+# Extension build artifacts
+extension/dist/
+
+# OS
+.DS_Store
+Thumbs.db
