@@ -46,6 +46,7 @@ from backend.database import Base, engine, get_db, init_db
 from backend.logging_setup import get_logger, log_scan
 from backend.models import BlacklistedDomain, ScannedURL, User
 from backend.qr_detector import QRDecodeError, decode_qr_from_bytes, extract_urls
+from backend.redirect_resolver import resolve_redirects
 from backend.risk_factors import risk_factors
 from backend.schemas import (
     DashboardResponse,
@@ -245,9 +246,24 @@ async def scan_url(
     # SECURITY: Sanitize URL before any processing or storage
     clean_url = sanitize_url(url)
 
+    # =========================================================================
+    #  REDIRECT UNWRAPPING
+    #  If the URL hides the real destination behind one or more redirects
+    #  (shorteners, open redirects, multi-hop phishing chains), resolve the
+    #  chain FIRST and direct the ENTIRE analysis at the FINAL landing URL —
+    #  the "base"/destination the user is actually taken to.
+    # =========================================================================
+    resolved = resolve_redirects(clean_url)
+    redir_chain = resolved.get("redirect_chain") or []
+    redir_count = resolved.get("redirect_count") or 0
+    redir_error = resolved.get("error")
+
+    # The analysis target = the final URL after unwrapping redirects.
+    analysis_url = resolved.get("final_url") or clean_url
+
     # --- Check the domain blacklist (parameterized query) ---
     from urllib.parse import urlparse
-    parsed = urlparse(url)
+    parsed = urlparse(analysis_url)
     hostname = parsed.hostname or ""
 
     blacklisted = db.query(BlacklistedDomain).filter(
@@ -258,16 +274,17 @@ async def scan_url(
         # Blacklisted domain — immediate phishing verdict
         result = ScanResponse(
             id=0,
-            url=clean_url,
+            url=analysis_url,
             prediction="phishing",
             confidence=1.0,
             scanned_at=datetime.now(timezone.utc),
+            redirect_chain=redir_chain,
         )
 
         # Log the scan to the database
         log_entry = ScannedURL(
             user_id=current_user.id,
-            url=clean_url,
+            url=analysis_url,
             prediction="phishing",
             confidence=1.0,
         )
@@ -281,7 +298,7 @@ async def scan_url(
 
     # --- ML Model Prediction ---
     if ml_pipeline is not None:
-        features = extract_features(url)
+        features = extract_features(analysis_url)
         prediction_int = ml_pipeline.predict([features])[0]
         prediction_proba = ml_pipeline.predict_proba([features])[0]
         prediction = "phishing" if prediction_int == 1 else "safe"
@@ -290,15 +307,15 @@ async def scan_url(
         # Fallback: heuristic-based detection when model isn't loaded
         confidence = 0.0
         risk_score = 0
-        if "@" in url:
+        if "@" in analysis_url:
             risk_score += 1
-        if not url.startswith("https://"):
+        if not analysis_url.startswith("https://"):
             risk_score += 1
         if any(c.isdigit() for c in parsed.hostname or ""):
             risk_score += 1
-        if url.count("-") > 3:
+        if analysis_url.count("-") > 3:
             risk_score += 1
-        if len(url) > 75:
+        if len(analysis_url) > 75:
             risk_score += 1
         prediction = "phishing" if risk_score >= 3 else "safe"
         confidence = min(risk_score / 5.0, 0.95)
@@ -318,7 +335,7 @@ async def scan_url(
     #  enough to blacklist a domain for everyone. We also never blacklist a
     #  known legitimate brand domain.
     # =========================================================================
-    lex_points, _lex_reasons = lexical_risk(clean_url, hostname)
+    lex_points, _lex_reasons = lexical_risk(analysis_url, hostname)
     if (
         prediction == "phishing"
         and confidence >= 0.95
@@ -354,7 +371,7 @@ async def scan_url(
     known_brand = bool(hostname) and is_known_brand_domain(hostname)
 
     forensic = analyze_forensic(
-        url=clean_url,
+        url=analysis_url,
         hostname=hostname,
         ml_prediction=prediction,
         ml_confidence=confidence,
@@ -365,10 +382,18 @@ async def scan_url(
     analysis_depth = forensic.get("depth", "fast")
     auto_escalated = bool(forensic.get("auto_escalated"))
 
+    # Report the ORIGINAL multi-hop redirect chain (after unwrapping) as the
+    # canonical redirect trail so the client sees the full journey, even though
+    # the sandbox re-fetched the already-resolved final URL directly.
+    if sandbox_findings is not None:
+        sandbox_findings["redirect_chain"] = redir_chain
+        sandbox_findings["redirect_count"] = redir_count
+        sandbox_findings["redirected"] = bool(redir_count)
+
     report = compute_report(
         ml_prediction=prediction,
         ml_confidence=confidence,
-        url=clean_url,
+        url=analysis_url,
         parsed_hostname=hostname,
         blacklisted=False,
         sandbox=sandbox_findings,
@@ -382,7 +407,7 @@ async def scan_url(
     #  brand-lookalike heuristic. The standalone visual_brand result is already
     #  fused into the score above via compute_report.
     # =========================================================================
-    brand_result = lookup_url(clean_url)
+    brand_result = lookup_url(analysis_url)
 
     # If the brand check flags a lookalike or phishing, escalate the verdict.
     if brand_result["verdict"] in ("lookalike", "phishing"):
@@ -406,7 +431,7 @@ async def scan_url(
     #  An exhaustive, machine-readable list of every individual risk found.
     # =========================================================================
     factors = risk_factors(
-        url=clean_url,
+        url=analysis_url,
         hostname=hostname,
         sandbox=sandbox_findings,
         brand=brand_result,
@@ -415,10 +440,10 @@ async def scan_url(
     )
 
     # --- Log to database ---
-    # SECURITY: clean_url (sanitized) is stored, not raw user input
+    # SECURITY: analysis_url (sanitized / final landing URL) is stored, not raw input
     log_entry = ScannedURL(
         user_id=current_user.id,
-        url=clean_url,
+        url=analysis_url,
         prediction=final_verdict,
         confidence=round(confidence, 4),
     )
@@ -428,19 +453,19 @@ async def scan_url(
 
     # --- File-based scan logging (persists even when server runs hidden) ---
     _client_ip = request.client.host if request.client else ""
-    log_scan(url=clean_url, prediction=final_verdict,
+    log_scan(url=analysis_url, prediction=final_verdict,
              risk_score=report.score, confidence=log_entry.confidence, ip=_client_ip)
 
     return ScanResponse(
         id=log_entry.id,
-        url=clean_url,
+        url=analysis_url,
         prediction=final_verdict,
         confidence=log_entry.confidence,
         scanned_at=log_entry.scanned_at,
         risk_score=report.score,
         explanation=report.reasons,
         sandbox=sandbox_findings,
-        redirect_chain=(sandbox_findings or {}).get("redirect_chain", []),
+        redirect_chain=redir_chain,
         risk_factors=factors,
         brand=brand_result,
         visual_brand=visual_result,

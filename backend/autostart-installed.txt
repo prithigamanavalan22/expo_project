@@ -1,0 +1,8 @@
+﻿task=PhishGuard Backend
+project=D:\asm_expo
+pythonw=C:\Program Files\Python314\pythonw.exe
+run_script=D:\asm_expo\run_server.py
+installed=2026-09-05 16:13:33
+
+From now on, the backend starts automatically whenever you log into Windows.
+The Chrome extension will wait for it and reconnect automatically.

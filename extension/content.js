@@ -14,6 +14,82 @@
 const OVERLAY_ID = "phishguard-alert-overlay";
 
 /**
+ * Display a non-intrusive green banner for Safe Websites.
+ * Automatically dismisses after 4 seconds.
+ *
+ * @param {string} url - The safe URL verified
+ */
+function showSafeOverlay(url) {
+  removeOverlay();
+
+  const banner = document.createElement("div");
+  banner.id = OVERLAY_ID;
+
+  const s = banner.style;
+  s.position = "fixed";
+  s.bottom = "24px";
+  s.right = "24px";
+  s.zIndex = "2147483647";
+  s.backgroundColor = "#064e3b";
+  s.border = "2px solid #10b981";
+  s.borderRadius = "12px";
+  s.padding = "14px 20px";
+  s.boxShadow = "0 10px 25px rgba(0, 0, 0, 0.5)";
+  s.color = "#ffffff";
+  s.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+  s.display = "flex";
+  s.alignItems = "center";
+  s.gap = "14px";
+  s.transition = "opacity 0.3s ease-in-out";
+
+  const icon = document.createElement("span");
+  icon.textContent = "✅";
+  icon.style.fontSize = "22px";
+  banner.appendChild(icon);
+
+  const textGroup = document.createElement("div");
+
+  const title = document.createElement("h4");
+  title.textContent = "SAFE WEBSITE";
+  title.style.margin = "0";
+  title.style.fontSize = "14px";
+  title.style.fontWeight = "bold";
+  title.style.color = "#10b981";
+  title.style.letterSpacing = "1px";
+  textGroup.appendChild(title);
+
+  const sub = document.createElement("p");
+  sub.textContent = "PhishGuard verified no security threats found.";
+  sub.style.margin = "2px 0 0";
+  sub.style.fontSize = "12px";
+  sub.style.color = "#d1fae5";
+  textGroup.appendChild(sub);
+
+  banner.appendChild(textGroup);
+
+  // Close button for safe banner
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "✕";
+  closeBtn.style.backgroundColor = "transparent";
+  closeBtn.style.border = "none";
+  closeBtn.style.color = "#a7f3d0";
+  closeBtn.style.fontSize = "14px";
+  closeBtn.style.cursor = "pointer";
+  closeBtn.style.marginLeft = "8px";
+  closeBtn.addEventListener("click", () => {
+    removeOverlay();
+  });
+  banner.appendChild(closeBtn);
+
+  document.body.appendChild(banner);
+
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    removeOverlay();
+  }, 4000);
+}
+
+/**
  * Create and display a high-visibility phishing warning overlay.
  * The overlay blocks the page content and warns the user.
  *
@@ -150,8 +226,8 @@ function showPhishingOverlay(url, confidence, extra) {
     card.appendChild(factorTitle);
     extra.topFactors.forEach((name) => {
       const li = document.createElement("li");
-      li.textContent = "• " + name + "        ";
-      li.style.cssText = "color:#cbd5e1;font-size:13px;text-align:left;margin:2px 0;";
+      li.textContent = "• " + name;
+      li.style.cssText = "color:#cbd5e1;font-size:13px;text-align:left;margin:2px 0;list-style:none;";
       card.appendChild(li);
     });
   }
@@ -163,7 +239,7 @@ function showPhishingOverlay(url, confidence, extra) {
   ws.color = "#fbbf24";
   ws.fontSize = "14px";
   ws.fontWeight = "bold";
-  ws.margin = "0 0 20px";
+  ws.margin = "12px 0 20px";
   card.appendChild(warning);
 
   // --- "Go Back" button ---
@@ -205,8 +281,7 @@ function showPhishingOverlay(url, confidence, extra) {
 }
 
 /**
- * Remove the phishing overlay from the DOM if it exists.
- * Called when the user clicks "Continue anyway" or when a safe page is loaded.
+ * Remove the overlay/banner from the DOM if it exists.
  */
 function removeOverlay() {
   const existing = document.getElementById(OVERLAY_ID);
@@ -227,6 +302,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       brand: message.brand,
       topFactors: Array.isArray(message.topFactors) ? message.topFactors : [],
     });
+    sendResponse({ success: true });
+  }
+
+  if (message.action === "showSafeAlert") {
+    showSafeOverlay(message.url || "Unknown URL");
     sendResponse({ success: true });
   }
 

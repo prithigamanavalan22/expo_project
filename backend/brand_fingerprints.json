@@ -275,6 +275,167 @@
       "signature_colors": ["#00A884", "#075E54", "#EDEDED"],
       "logo_hint": "green whatsapp web on light",
       "palette": [["#00A884", 0.35], ["#075E54", 0.20], ["#EDEDED", 0.45]]
+    },
+    "roblox": {
+      "canonical_url": "https://www.roblox.com",
+      "homepage_url": "https://www.roblox.com",
+      "signature_colors": ["#00A2FF", "#E2231A", "#111111"],
+      "logo_hint": "red and blue rounded R icon",
+      "palette": [["#00A2FF", 0.30], ["#111111", 0.45], ["#E2231A", 0.10], ["#FFFFFF", 0.15]]
+    },
+    "epicgames": {
+      "canonical_url": "https://www.epicgames.com",
+      "homepage_url": "https://www.epicgames.com",
+      "signature_colors": ["#111111", "#FFFFFF", "#2A2A2A"],
+      "logo_hint": "dark fangames ellipsis mark",
+      "palette": [["#111111", 0.35], ["#FFFFFF", 0.45], ["#2A2A2A", 0.20]]
+    },
+    "playstation": {
+      "canonical_url": "https://www.playstation.com",
+      "homepage_url": "https://www.playstation.com",
+      "signature_colors": ["#0070D1", "#003791", "#FFFFFF"],
+      "logo_hint": "blue PS glyph",
+      "palette": [["#0070D1", 0.30], ["#003791", 0.15], ["#FFFFFF", 0.55]]
+    },
+    "xbox": {
+      "canonical_url": "https://www.xbox.com",
+      "homepage_url": "https://www.xbox.com",
+      "signature_colors": ["#107C10", "#9BF00B", "#1B1B1B"],
+      "logo_hint": "green Xbox sphere",
+      "palette": [["#107C10", 0.25], ["#1B1B1B", 0.50], ["#9BF00B", 0.10], ["#FFFFFF", 0.15]]
+    },
+    "nintendo": {
+      "canonical_url": "https://www.nintendo.com",
+      "homepage_url": "https://www.nintendo.com",
+      "signature_colors": ["#E60012", "#FFFFFF"],
+      "logo_hint": "red Nintendo wordmark",
+      "palette": [["#E60012", 0.30], ["#FFFFFF", 0.70]]
+    },
+    "metamask": {
+      "canonical_url": "https://metamask.io",
+      "homepage_url": "https://metamask.io",
+      "signature_colors": ["#F6851B", "#E2761B", "#161616"],
+      "logo_hint": "orange/blue fox head",
+      "palette": [["#F6851B", 0.30], ["#E2761B", 0.15], ["#161616", 0.35], ["#FFFFFF", 0.20]]
+    },
+    "ledger": {
+      "canonical_url": "https://www.ledger.com",
+      "homepage_url": "https://www.ledger.com",
+      "signature_colors": ["#000000", "#1B1B1B", "#FFFFFF"],
+      "logo_hint": "black-and-white hexagon chip",
+      "palette": [["#000000", 0.45], ["#FFFFFF", 0.55]]
+    },
+    "airbnb": {
+      "canonical_url": "https://www.airbnb.com",
+      "homepage_url": "https://www.airbnb.com",
+      "signature_colors": ["#FF5A5F", "#484848", "#FFFFFF"],
+      "logo_hint": "coral bēlo symbol",
+      "palette": [["#FF5A5F", 0.30], ["#484848", 0.30], ["#FFFFFF", 0.40]]
+    },
+    "venmo": {
+      "canonical_url": "https://venmo.com",
+      "homepage_url": "https://venmo.com",
+      "signature_colors": ["#008CFF", "#3D95CE", "#FFFFFF"],
+      "logo_hint": "blue V wordmark",
+      "palette": [["#008CFF", 0.40], ["#3D95CE", 0.10], ["#FFFFFF", 0.50]]
+    },
+    "cashapp": {
+      "canonical_url": "https://cash.app",
+      "homepage_url": "https://cash.app",
+      "signature_colors": ["#00D632", "#A854F7", "#F3116B", "#161616"],
+      "logo_hint": "green circle with dollar sign",
+      "palette": [["#00D632", 0.35], ["#161616", 0.35], ["#A854F7", 0.10], ["#F3116B", 0.20]]
+    },
+    "zelle": {
+      "canonical_url": "https://www.zellepay.com",
+      "homepage_url": "https://www.zellepay.com",
+      "signature_colors": ["#6D1ED4", "#9D1FD3", "#FFFFFF"],
+      "logo_hint": "purple double-Z symbol",
+      "palette": [["#6D1ED4", 0.30], ["#9D1FD3", 0.15], ["#FFFFFF", 0.55]]
+    },
+    "stripe": {
+      "canonical_url": "https://stripe.com",
+      "homepage_url": "https://stripe.com",
+      "signature_colors": ["#635BFF", "#0A2540", "#00D4FF"],
+      "logo_hint": "indigo S mark",
+      "palette": [["#635BFF", 0.25], ["#0A2540", 0.45], ["#00D4FF", 0.05], ["#FFFFFF", 0.25]]
+    },
+    "westernunion": {
+      "canonical_url": "https://www.westernunion.com",
+      "homepage_url": "https://www.westernunion.com",
+      "signature_colors": ["#FFDD00", "#D50069", "#000000"],
+      "logo_hint": "yellow/magenta W globes",
+      "palette": [["#FFDD00", 0.35], ["#D50069", 0.20], ["#000000", 0.10], ["#FFFFFF", 0.35]]
+    },
+    "americanexpress": {
+      "canonical_url": "https://www.americanexpress.com",
+      "homepage_url": "https://www.americanexpress.com",
+      "signature_colors": ["#2E77BC", "#006FCF", "#FFFFFF"],
+      "logo_hint": "blue card with centurion",
+      "palette": [["#2E77BC", 0.30], ["#006FCF", 0.15], ["#FFFFFF", 0.55]]
+    },
+    "capitalone": {
+      "canonical_url": "https://www.capitalone.com",
+      "homepage_url": "https://www.capitalone.com",
+      "signature_colors": ["#004977", "#C4D600", "#FFFFFF"],
+      "logo_hint": "blue/yellow quarter-circle",
+      "palette": [["#004977", 0.35], ["#C4D600", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "citi": {
+      "canonical_url": "https://www.citi.com",
+      "homepage_url": "https://www.citi.com",
+      "signature_colors": ["#004B93", "#0277BD", "#FFFFFF"],
+      "logo_hint": "blue arc Citi wordmark",
+      "palette": [["#004B93", 0.30], ["#0277BD", 0.10], ["#FFFFFF", 0.60]]
+    },
+    "hsbc": {
+      "canonical_url": "https://www.hsbc.com",
+      "homepage_url": "https://www.hsbc.com",
+      "signature_colors": ["#DB0011", "#231F20", "#FFFFFF"],
+      "logo_hint": "red hexagon HSBC",
+      "palette": [["#DB0011", 0.35], ["#231F20", 0.15], ["#FFFFFF", 0.50]]
+    },
+    "barclays": {
+      "canonical_url": "https://www.barclays.co.uk",
+      "homepage_url": "https://www.barclays.co.uk",
+      "signature_colors": ["#00AEEF", "#EF308C", "#FFFFFF"],
+      "logo_hint": "blue eagle",
+      "palette": [["#00AEEF", 0.25], ["#EF308C", 0.10], ["#FFFFFF", 0.65]]
+    },
+    "santander": {
+      "canonical_url": "https://www.santander.com",
+      "homepage_url": "https://www.santander.com",
+      "signature_colors": ["#EC0000", "#FFFFFF"],
+      "logo_hint": "red flame symbol",
+      "palette": [["#EC0000", 0.30], ["#FFFFFF", 0.70]]
+    },
+    "walmart": {
+      "canonical_url": "https://www.walmart.com",
+      "homepage_url": "https://www.walmart.com",
+      "signature_colors": ["#0071CE", "#F9C30F", "#041E42", "#FFFFFF"],
+      "logo_hint": "blue spark Walmart",
+      "palette": [["#0071CE", 0.35], ["#041E42", 0.25], ["#F9C30F", 0.15], ["#FFFFFF", 0.25]]
+    },
+    "target": {
+      "canonical_url": "https://www.target.com",
+      "homepage_url": "https://www.target.com",
+      "signature_colors": ["#CC0000", "#FFFFFF", "#4A4A4A"],
+      "logo_hint": "red bullseye",
+      "palette": [["#CC0000", 0.30], ["#FFFFFF", 0.65], ["#4A4A4A", 0.05]]
+    },
+    "bestbuy": {
+      "canonical_url": "https://www.bestbuy.com",
+      "homepage_url": "https://www.bestbuy.com",
+      "signature_colors": ["#0046BE", "#FFCE00", "#FFFFFF"],
+      "logo_hint": "blue tag with yellow dot",
+      "palette": [["#0046BE", 0.30], ["#FFCE00", 0.20], ["#FFFFFF", 0.50]]
+    },
+    "doordash": {
+      "canonical_url": "https://www.doordash.com",
+      "homepage_url": "https://www.doordash.com",
+      "signature_colors": ["#EB1700", "#FF3008", "#FFFFFF"],
+      "logo_hint": "red dash-dash",
+      "palette": [["#EB1700", 0.35], ["#FF3008", 0.15], ["#FFFFFF", 0.50]]
     }
   }
 }

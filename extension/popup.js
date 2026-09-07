@@ -11,6 +11,48 @@
  */
 
 const API_BASE = "http://localhost:8000/api/v1";
+const HEALTH_URL = "http://localhost:8000/health";
+
+// ===========================================================================
+//  BACKEND READINESS / AUTO-RETRY
+//  The backend auto-starts with Windows, but right after a reboot it may still
+//  be booting. Instead of immediately showing "Backend not reachable", the
+//  popup polls /health and retries the request before giving up.
+// ===========================================================================
+
+/**
+ * Wait until the backend answers /health. Resolves true when available.
+ */
+async function waitForBackend(maxWaitMs = 12000) {
+  const start = Date.now();
+  for (;;) {
+    try {
+      const resp = await fetch(HEALTH_URL, { method: "GET", cache: "no-store" });
+      if (resp.ok) return true;
+    } catch (err) {
+      // not ready yet — keep polling
+    }
+    if (Date.now() - start >= maxWaitMs) return false;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+}
+
+/**
+ * fetch() that auto-waits for the backend and retries the request once before
+ * letting the caller's error handling take over.
+ */
+async function fetchWithBackendRetry(url, options, maxWaitMs = 12000) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      lastError = err;
+      if (!(await waitForBackend(maxWaitMs))) break;
+    }
+  }
+  throw lastError;
+}
 
 // ===========================================================================
 //  DOM Element References
@@ -97,6 +139,12 @@ const envQrFileInput = document.getElementById("envQrFileInput");
 const envQrLoading = document.getElementById("envQrLoading");
 const envQrError = document.getElementById("envQrError");
 
+// Redirect chain awareness elements
+const envRedirectSection = document.getElementById("envRedirectSection");
+const envRedirectWarn = document.getElementById("envRedirectWarn");
+const envRedirectToggle = document.getElementById("envRedirectToggle");
+const envRedirectList = document.getElementById("envRedirectList");
+
 // ===========================================================================
 //  VIEW LAYOUT — Env Sandbox is the default/only visible view.
 //  The old URL / QR top-nav tabs were removed; their scan controls now live
@@ -167,7 +215,7 @@ loginBtn.addEventListener("click", async () => {
   loginBtn.textContent = "Signing in...";
 
   try {
-    const response = await fetch(`${API_BASE}/auth/login`, {
+    const response = await fetchWithBackendRetry(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -229,7 +277,7 @@ registerBtn.addEventListener("click", async () => {
   registerBtn.textContent = "Creating account...";
 
   try {
-    const response = await fetch(`${API_BASE}/auth/register`, {
+    const response = await fetchWithBackendRetry(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
@@ -243,7 +291,7 @@ registerBtn.addEventListener("click", async () => {
     }
 
     // Auto-login after successful registration
-    const loginResponse = await fetch(`${API_BASE}/auth/login`, {
+    const loginResponse = await fetchWithBackendRetry(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -283,6 +331,25 @@ async function showDashboard(username) {
 
   // Load scan history
   loadHistory();
+
+  // Auto-detect current tab URL and pre-fill + auto-scan
+  autoDetectCurrentTab();
+}
+
+function autoDetectCurrentTab() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (chrome.runtime.lastError || !tabs || !tabs.length) return;
+    const tab = tabs[0];
+    const url = tab.url;
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return;
+    if (url.includes("localhost:8000") || url.includes("127.0.0.1:8000")) return;
+
+    // Pre-fill the URL input
+    if (envUrlInput) envUrlInput.value = url;
+
+    // Auto-scan the current tab URL
+    envScanUrl(url);
+  });
 }
 
 // ===========================================================================
@@ -643,7 +710,7 @@ async function scanQRFetch(imageBase64) {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
-    const response = await fetch(`${API_BASE}/scan/qr`, {
+    const response = await fetchWithBackendRetry(`${API_BASE}/scan/qr`, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({ image_base64: imageBase64, scan_url: true }),
@@ -849,6 +916,13 @@ function envRenderResult(result) {
   else if (brand && brand.verdict === "lookalike") signaled = 1;
   else if (sb && (sb.domain_mismatch || sb.suspicious_login_page)) signaled = 1;
 
+  // If the URL forwards through redirects, show the "Redirection" box and
+  // count it as an additional flagged signal.
+  const chain = Array.isArray(result.redirect_chain) ? result.redirect_chain : [];
+  const redirected = chain.length > 1 && !(chain.length === 1 && chain[0] && chain[0].final);
+  if (redirected) signaled += 1;
+  renderEnvRedirects(chain, redirected);
+
   if (envChecks) envChecks.textContent = "4 Probes";
   if (envSignals) {
     envSignals.textContent = signaled + " Flagged";
@@ -857,6 +931,60 @@ function envRenderResult(result) {
   const conf = (Number(result.confidence) || 0) * 100;
   if (envConfidence) envConfidence.textContent = conf.toFixed(1) + "%";
 }
+
+// ===========================================================================
+//  REDIRECCTION AWARENESS
+//  When the scanner unwraps a multi-hop redirect chain, surface it in the env
+//  dashboard: a warning plus a button that reveals each hop in the chain.
+// ===========================================================================
+
+let envRedirectListOpen = false;
+
+function renderEnvRedirects(chain, redirected) {
+  if (!envRedirectSection) return;
+  if (!redirected) {
+    envRedirectSection.classList.add("hidden");
+    envRedirectListOpen = false;
+    return;
+  }
+
+  const hops = Array.isArray(chain) ? chain : [];
+  envRedirectSection.classList.remove("hidden");
+  envRedirectWarn.textContent =
+    `Multiple redirects detected — this URL forwards through ${hops.length - 1} hop(s) ` +
+    `before reaching its base landing page.`;
+
+  // (Re)build the chain list
+  while (envRedirectList.firstChild) {
+    envRedirectList.removeChild(envRedirectList.firstChild);
+  }
+  hops.forEach((hop, i) => {
+    const li = document.createElement("li");
+    li.className = "env-redirect-hop";
+    const arrow = i < hops.length - 1 ? " → " : " ✔";
+    li.textContent = `${i === 0 ? "Start" : hop.final ? "Final" : `Hop ${i}`}: ${hop.url}  [HTTP ${hop.status}]${arrow}`;
+    envRedirectList.appendChild(li);
+  });
+
+  if (envRedirectToggle) {
+    envRedirectToggle.textContent = envRedirectListOpen ? "Hide Redirect Chain" : "View Redirect Chain";
+  }
+  if (envRedirectList) envRedirectList.classList.toggle("hidden", !envRedirectListOpen);
+}
+
+if (envRedirectToggle) {
+  envRedirectToggle.addEventListener("click", () => {
+    envRedirectListOpen = !envRedirectListOpen;
+    envRedirectToggle.textContent = envRedirectListOpen ? "Hide Redirect Chain" : "View Redirect Chain";
+    if (envRedirectList) envRedirectList.classList.toggle("hidden", !envRedirectListOpen);
+  });
+}
+
+// Guards against out-of-order scan responses. The popup auto-scans the current
+// (possibly safe) tab on open; if that slow auto-scan completes AFTER a faster
+// manual scan (a phishing site is usually unreachable and fails fast), it would
+// otherwise overwrite the phishing verdict with the safe tab's result.
+let envScanToken = 0;
 
 async function envScanUrl(urlValue) {
   if (envUrlLoading) envUrlLoading.classList.remove("hidden");
@@ -870,6 +998,10 @@ async function envScanUrl(urlValue) {
   if (!/^https?:\/\//i.test(urlValue)) {
     urlValue = "https://" + urlValue;
   }
+
+  // Capture this scan's identity; any LATER scan bumps the token and makes
+  // stale responses from this one (e.g. the auto-detect scan) get ignored.
+  const myToken = ++envScanToken;
 
   let result = null;
   try {
@@ -890,11 +1022,37 @@ async function envScanUrl(urlValue) {
     if (envUrlLoading) envUrlLoading.classList.add("hidden");
   }
 
+  // Only render the freshest request's result — a newer scan supersedes this one.
+  if (myToken !== envScanToken) return;
+
   if (result && result.prediction) {
     envRenderResult(result);
-  } else if (envQrError) {
-    envQrError.textContent = "Scan failed. Is the backend running?";
-    envQrError.style.display = "block";
+  } else {
+    // Backend may still be starting — wait for it, then retry the scan once
+    // before showing an error to the user.
+    const wasReady = await waitForBackend(10000);
+    if (wasReady) {
+      try {
+        result = await new Promise((resolve) => {
+          chrome.runtime.sendMessage(
+            { action: "scanUrlText", url: urlValue },
+            (resp) => {
+              if (chrome.runtime.lastError) return resolve(null);
+              resolve(resp && resp.result ? resp.result : null);
+            }
+          );
+        });
+      } catch (e) {
+        result = null;
+      }
+    }
+    if (myToken !== envScanToken) return;
+    if (result && result.prediction) {
+      envRenderResult(result);
+    } else if (envQrError) {
+      envQrError.textContent = "Scan failed. Is the backend running?";
+      envQrError.style.display = "block";
+    }
   }
 }
 
@@ -966,7 +1124,7 @@ async function loadHistory() {
   if (!token) return;
 
   const attempt = (tok) =>
-    fetch(`${API_BASE}/dashboard/history`, {
+    fetchWithBackendRetry(`${API_BASE}/dashboard/history`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${tok}`,
@@ -974,8 +1132,9 @@ async function loadHistory() {
       },
     });
 
+  let response;
   try {
-    let response = await attempt(token);
+    response = await attempt(token);
 
     // 401 -> token expired. Silently re-login with stored creds and retry once
     // so a stale token never silently empties the history panel.
@@ -992,7 +1151,7 @@ async function loadHistory() {
     const data = await response.json();
     renderHistory(data.history || []);
   } catch (err) {
-    // Silently fail — the user may be offline
+    // Backend unreachable — silent fail, retry happens on next open
   }
 }
 

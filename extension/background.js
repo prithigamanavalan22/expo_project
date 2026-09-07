@@ -6,7 +6,7 @@
  *  2. Extracts the current tab URL
  *  3. Calls the local PhishGuard API (POST /api/v1/scan)
  *  4. Stores the result in chrome.storage for the popup to display
- *  5. Sends a message to content.js to show an overlay if phishing detected
+ *  5. Sends a message to content.js to show an overlay (Phishing or Safe)
  *
  * SECURITY NOTES:
  *  - Only communicates with localhost:8000 (declared in host_permissions).
@@ -16,14 +16,107 @@
  */
 
 const API_BASE = "http://localhost:8000/api/v1";
+const HEALTH_URL = "http://localhost:8000/health";
+
+// ---------------------------------------------------------------------------
+// BACKEND REACHABILITY / AUTO-RECONNECT
+// The backend auto-starts with Windows. Right after a reboot it may still be
+// coming up, so the extension keeps probing /health and waiting for it instead
+// of immediately failing with "backend not reachable".
+// ---------------------------------------------------------------------------
+let healthPoller = null;
+
+async function probeBackend() {
+  try {
+    const resp = await fetch(HEALTH_URL, { method: "GET", cache: "no-store" });
+    const ready = resp.ok;
+    await chrome.storage.local.set({
+      backendHealth: { ready, at: Date.now() },
+    });
+    return ready;
+  } catch (err) {
+    await chrome.storage.local.set({
+      backendHealth: { ready: false, at: Date.now(), error: err.message },
+    });
+    return false;
+  }
+}
+
+/**
+ * Wait until the backend answers /health. Resolves true when available.
+ */
+function waitForBackend(maxWaitMs = 30000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const tick = async () => {
+      if (await probeBackend()) return resolve(true);
+      if (Date.now() - start >= maxWaitMs) return resolve(false);
+      setTimeout(tick, 1500 + Math.random() * 500);
+    };
+    tick();
+  });
+}
+
+/**
+ * Slow background poller. Once the backend becomes healthy it stores state the
+ * popup reads and stops polling; the poller restarts on the next SW wake if the
+ * backend has gone away again.
+ */
+let backendWasReady = null;
+
+async function rescanPendingTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ status: "complete" });
+    for (const tab of tabs) {
+      const url = tab.url || "";
+      if (!/^https?:\/\//i.test(url)) continue;
+      if (url.includes("localhost:8000") || url.includes("127.0.0.1:8000")) continue;
+      if (recentlyScanned.has(url) || tabScanInFlight.has(tab.id)) continue;
+      tabLastScannedUrl.set(tab.id, url);
+      recentlyScanned.add(url);
+      setTimeout(() => recentlyScanned.delete(url), SCAN_COOLDOWN_MS);
+      const p = (async () => {
+        const result = await scanURL(url, true);
+        await processScanResult(url, result, tab.id);
+      })().catch(() => {}).finally(() => {
+        tabScanInFlight.delete(tab.id);
+      });
+      tabScanInFlight.set(tab.id, p);
+    }
+  } catch (err) {
+    console.log("[PhishGuard] rescan after backend recovery error:", err.message);
+  }
+}
+
+function startHealthPoller() {
+  if (healthPoller) return;
+  healthPoller = setInterval(async () => {
+    const ready = await probeBackend();
+    if (ready) {
+      clearInterval(healthPoller);
+      healthPoller = null;
+      // Backend just recovered — re-check the tabs we could not reach earlier.
+      if (backendWasReady === false) await rescanPendingTabs();
+      backendWasReady = true;
+    } else {
+      backendWasReady = false;
+    }
+  }, 4000);
+}
+
+chrome.runtime.onStartup?.addListener(() => startHealthPoller());
+startHealthPoller();
 
 // Track URLs we've already scanned to avoid duplicate requests
 const recentlyScanned = new Set();
 const SCAN_COOLDOWN_MS = 5000; // 5 second cooldown per URL
 
+// Per-tab tracking of the URL we last scanned
+const tabLastScannedUrl = new Map(); // tabId -> url string
+const tabScanInFlight = new Map();   // tabId -> Promise (dedupe concurrent scans)
+
 /**
  * Get the JWT token from chrome.storage.
- * Returns null if the user hasn't logged in yet.
  */
 async function getAuthToken() {
   return new Promise((resolve) => {
@@ -35,9 +128,6 @@ async function getAuthToken() {
 
 /**
  * Stored credentials for silent re-authentication when a JWT expires.
- * Credentials live in chrome.storage.local (encrypted at-rest by the browser)
- * and are ONLY used to transparently refresh the token on a 401 — never sent
- * anywhere except the localhost login endpoint.
  */
 async function getStoredCredentials() {
   return new Promise((resolve) => {
@@ -59,8 +149,6 @@ let reauthInFlight = null;
 
 /**
  * Silently re-login with stored credentials and cache the fresh token.
- * Multiple concurrent 401-triggered refreshes share one login call.
- * Returns the new token, or null if no stored credentials / login fails.
  */
 async function reAuthenticate() {
   if (reauthInFlight) return reauthInFlight;
@@ -92,12 +180,6 @@ async function reAuthenticate() {
 
 /**
  * Call the PhishGuard API to scan a URL.
- *
- * SECURITY: The request is sent only to the whitelisted localhost origin.
- * The JWT token is attached via Authorization header — never in the URL body.
- *
- * @param {string} url - The URL to scan
- * @returns {Promise<Object>} - The scan result from the API
  */
 async function scanURL(url, includeAnalysis = false) {
   const token = await getAuthToken();
@@ -106,7 +188,6 @@ async function scanURL(url, includeAnalysis = false) {
     "Content-Type": "application/json",
   };
 
-  // Attach JWT if available
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -119,8 +200,6 @@ async function scanURL(url, includeAnalysis = false) {
     });
 
     if (!response.ok) {
-      // 401 -> token expired/missing. Silently re-login with stored creds
-      // and retry ONCE so a stale token never silently breaks scans.
       if (response.status === 401) {
         const newToken = await reAuthenticate();
         if (newToken) {
@@ -146,36 +225,56 @@ async function scanURL(url, includeAnalysis = false) {
     return result;
   } catch (error) {
     console.error("[PhishGuard] Network error:", error.message);
+    // Backend may still be starting (e.g. right after a reboot) — wait for it
+    // and retry once before giving up.
+    if (await waitForBackend(15000)) {
+      try {
+        const retry = await fetch(`${API_BASE}/scan`, {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({ url: url, analysis: includeAnalysis }),
+        });
+        if (retry.ok) return await retry.json();
+        if (retry.status === 401) {
+          const newToken = await reAuthenticate();
+          if (newToken) {
+            const retryAuth = await fetch(`${API_BASE}/scan`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${newToken}`,
+              },
+              body: JSON.stringify({ url: url, analysis: includeAnalysis }),
+            });
+            if (retryAuth.ok) return await retryAuth.json();
+          }
+        }
+      } catch (e2) {
+        console.error("[PhishGuard] Retry after backend wait also failed:", e2.message);
+      }
+    }
     return { prediction: "unknown", confidence: 0, error: "network_error" };
   }
 }
 
 /**
- * Scan a decoded QR-code payload (or URL) through the shared risk engine.
- * Used by the popup's QR scanner tab.
-
- * @param {string} url - The URL decoded from the QR code
- * @returns {Promise<Object>} - The scan result
+ * Scan a decoded QR-code payload (or URL).
  */
 async function scanQRURL(url) {
   return scanURL(url, false);
 }
 
 /**
- * Process a scan result and update storage + content script.
- *
- * SECURITY: Result data is validated before acting on it.
- * Only the prediction field is trusted — it's an enum from the server.
- *
- * @param {string} url - The scanned URL
- * @param {Object} result - The API response
- * @param {number} tabId - The Chrome tab ID
+ * Process a scan result and update storage + content script overlay.
+ * UPDATED: Sends 'showSafeAlert' for safe sites and 'showPhishingAlert' for phishing sites.
  */
 async function processScanResult(url, result, tabId) {
-  // Validate prediction value — only allow expected values
+  // Normalize string casing to lower case ("Phishing" / "PHISHING" -> "phishing")
+  const rawPrediction = (result.prediction || "unknown").toString().toLowerCase();
+
   const validPredictions = ["safe", "suspicious", "phishing", "unknown"];
-  const prediction = validPredictions.includes(result.prediction)
-    ? result.prediction
+  const prediction = validPredictions.includes(rawPrediction)
+    ? rawPrediction
     : "unknown";
 
   const scanData = {
@@ -197,44 +296,69 @@ async function processScanResult(url, result, tabId) {
     lastScan: scanData,
   });
 
-  // Update the badge icon color
-  updateBadge(prediction, tabId);
+  // Update badge icon
+  if (tabId) {
+    updateBadge(prediction, tabId);
+  }
 
-  // If phishing detected, notify the content script to show the alert overlay
+  // Handle message delivery with dynamic script injection fallback
   if (prediction === "phishing") {
-    try {
-      chrome.tabs.sendMessage(tabId, {
-        action: "showPhishingAlert",
-        url: url,
-        confidence: result.confidence,
-        risk_score: result.risk_score,
-        brand: result.brand,
-        topFactors: Array.isArray(result.risk_factors)
-          ? result.risk_factors.slice(0, 4).map((f) => f.name)
-          : [],
+    const alertPayload = {
+      action: "showPhishingAlert",
+      url: url,
+      confidence: result.confidence,
+      risk_score: result.risk_score,
+      brand: result.brand,
+      topFactors: Array.isArray(result.risk_factors)
+        ? result.risk_factors.slice(0, 4).map((f) => f.name)
+        : [],
+    };
+
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, alertPayload).catch(() => {
+        // If content script is not yet listening, dynamically inject content.js and re-send
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ["content.js"]
+        }).then(() => {
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tabId, alertPayload).catch((err) => {
+              console.log("[PhishGuard] Script injection overlay error:", err.message);
+            });
+          }, 100);
+        }).catch(err => {
+          console.log("[PhishGuard] Script injection blocked on this tab:", err.message);
+        });
       });
-    } catch (err) {
-      // Content script may not be loaded on chrome:// pages
-      console.log("[PhishGuard] Could not inject alert (page not accessible):", err.message);
     }
-  } else if (prediction === "safe") {
-    // Clear any existing alert on safe pages
-    try {
-      chrome.tabs.sendMessage(tabId, {
-        action: "clearAlert",
+  } else if (prediction === "safe" && tabId) {
+    const safePayload = {
+      action: "showSafeAlert",
+      url: url
+    };
+
+    chrome.tabs.sendMessage(tabId, safePayload).catch(() => {
+      // If content script is not yet listening, dynamically inject content.js and re-send
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ["content.js"]
+      }).then(() => {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tabId, safePayload).catch((err) => {
+            console.log("[PhishGuard] Script injection safe banner error:", err.message);
+          });
+        }, 100);
+      }).catch(err => {
+        console.log("[PhishGuard] Script injection blocked on this tab:", err.message);
       });
-    } catch (err) {
-      // Content script may not be loaded
-    }
+    });
+  } else if (tabId) {
+    chrome.tabs.sendMessage(tabId, { action: "clearAlert" }).catch(() => {});
   }
 }
 
 /**
  * Update the browser action badge to show scan status.
- * Green = safe, Red = phishing, Gray = unknown.
- *
- * @param {string} prediction - "safe", "phishing", or "unknown"
- * @param {number} tabId - The Chrome tab ID
  */
 function updateBadge(prediction, tabId) {
   const badgeConfig = {
@@ -253,42 +377,56 @@ function updateBadge(prediction, tabId) {
 //  EVENT LISTENERS
 // ===========================================================================
 
-/**
- * Listen for tab updates (URL changes).
- *
- * SECURITY: Only processes HTTP/HTTPS URLs — skips chrome://, file://, etc.
- */
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Only process when the page finishes loading
-  if (changeInfo.status !== "complete") return;
-
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const url = tab.url;
-  if (!url) return;
-
-  // SECURITY: Only scan HTTP/HTTPS URLs
-  if (!url.startsWith("http://") && !url.startsWith("https://")) return;
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return;
 
   // Skip localhost / API server URLs
   if (url.includes("localhost:8000") || url.includes("127.0.0.1:8000")) return;
 
-  // Cooldown: don't re-scan the same URL within SCAN_COOLDOWN_MS
+  const urlChanged = changeInfo.url && changeInfo.url !== (tabLastScannedUrl.get(tabId) || null);
+  const finishedLoading = changeInfo.status === "complete";
+
+  if (!urlChanged && !finishedLoading) return;
+  if (finishedLoading && !urlChanged && tabLastScannedUrl.get(tabId) === url) return;
+
   if (recentlyScanned.has(url)) return;
+  if (tabScanInFlight.has(tabId)) return;
+
+  tabLastScannedUrl.set(tabId, url);
   recentlyScanned.add(url);
   setTimeout(() => recentlyScanned.delete(url), SCAN_COOLDOWN_MS);
 
-  // Perform the scan — deep analysis so the sandbox (content analysis) is
-  // populated for the popup + overlay. This fetches & inspects page content.
-  const result = await scanURL(url, true);
-  await processScanResult(url, result, tabId);
+  const scanPromise = (async () => {
+    const result = await scanURL(url, true);
+    await processScanResult(url, result, tabId);
+  })()
+    .catch((err) => console.error("[PhishGuard] auto-scan error:", err))
+    .finally(() => {
+      tabScanInFlight.delete(tabId);
+    });
+
+  tabScanInFlight.set(tabId, scanPromise);
 });
 
-/**
- * Listen for messages from the popup or content scripts.
- * Enables manual "scan now" from the popup.
- */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "backendStatus") {
+    const timeoutMs =
+      message.maxWaitMs != null ? Number(message.maxWaitMs) : 30000;
+    waitForBackend(timeoutMs).then((ready) => {
+      sendResponse({ ready });
+    });
+    return true;
+  }
+
+  if (message.action === "waitForBackend") {
+    waitForBackend(Number(message.maxWaitMs) || 30000).then((ready) => {
+      sendResponse({ ready });
+    });
+    return true;
+  }
+
   if (message.action === "scanCurrentTab") {
-    // Get the active tab and scan it
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       try {
         if (tabs[0] && tabs[0].url) {
@@ -308,7 +446,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: err.message });
       }
     });
-    return true; // Keep the message channel open for async sendResponse
+    return true;
   }
 
   if (message.action === "getLastScan") {
@@ -319,7 +457,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "scanUrlText") {
-    // Scan an arbitrary URL typed/pasted in the popup's Env Sandbox view.
     const url = typeof message.url === "string" ? message.url.trim() : "";
     if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
       sendResponse({ success: false, error: "Not a valid HTTP/HTTPS URL" });
@@ -339,6 +476,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: err.message });
       }
     })();
-    return true; // async sendResponse
+    return true;
   }
 });
