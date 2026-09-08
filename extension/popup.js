@@ -145,6 +145,28 @@ const envRedirectWarn = document.getElementById("envRedirectWarn");
 const envRedirectToggle = document.getElementById("envRedirectToggle");
 const envRedirectList = document.getElementById("envRedirectList");
 
+// Risk Analysis section elements
+const envRiskAnalysis = document.getElementById("envRiskAnalysis");
+const raGaugeArc = document.getElementById("raGaugeArc");
+const raGaugeValue = document.getElementById("raGaugeValue");
+const raVerdict = document.getElementById("raVerdict");
+const raRiskLevel = document.getElementById("raRiskLevel");
+const raReasons = document.getElementById("raReasons");
+const raReasonsList = document.getElementById("raReasonsList");
+const raRecommendation = document.getElementById("raRecommendation");
+const raStatusPill = document.getElementById("raStatusPill");
+const raInsight = document.getElementById("raInsight");
+const userBadge = document.getElementById("userBadge");
+const raFactorTitle = document.getElementById("raFactorTitle");
+const raFactorCount = document.getElementById("raFactorCount");
+const raFactorList = document.getElementById("raFactorList");
+const raFactorsBlock = document.getElementById("raFactorsBlock");
+const raNoFactors = document.getElementById("raNoFactors");
+const envValidation = document.getElementById("envValidation");
+const raTouchFlow = document.getElementById("raTouchFlow");
+const raNoRedirect = document.getElementById("raNoRedirect");
+const raRedirectFlow = document.getElementById("raRedirectFlow");
+
 // ===========================================================================
 //  VIEW LAYOUT — Env Sandbox is the default/only visible view.
 //  The old URL / QR top-nav tabs were removed; their scan controls now live
@@ -194,6 +216,7 @@ function showView(view) {
   loginSection.classList.toggle("hidden", view !== "login");
   registerSection.classList.toggle("hidden", view !== "register");
   dashboardSection.classList.toggle("hidden", view !== "dashboard");
+  if (userBadge) userBadge.classList.toggle("hidden", view !== "dashboard");
 }
 
 // ===========================================================================
@@ -877,17 +900,298 @@ function loadLastScan() {
 }
 
 // ===========================================================================
+//  RISK ANALYSIS RENDERING
+//  Populates the Risk Analysis section of the URL scan result page:
+//   - Circular 0-100 gauge + verdict + risk level
+//   - Main reasons (explanation)
+//   - Recommended action
+//   - Structured risk factors (status/name/description/importance)
+//   - "What happens if I touch this URL?" educational flow (NEVER navigates)
+//   - Redirect visualization
+//  SECURITY: All DOM built with createElement/textContent — never innerHTML.
+// ===========================================================================
+
+function clearNode(node) {
+  if (!node) return;
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function fallbackRiskLevel(pred) {
+  if (pred === "safe") return "low";
+  if (pred === "suspicious") return "suspicious";
+  if (pred === "phishing") return "high";
+  return "unknown";
+}
+
+function fallbackRecommendation(pred) {
+  switch (pred) {
+    case "phishing":
+      return "Do not enter passwords, OTPs, banking information, or other sensitive information on this website.";
+    case "suspicious":
+      return "Proceed with caution. Verify the exact domain in the address bar and look for HTTPS before entering personal or financial information.";
+    case "safe":
+      return "No significant threats detected. This URL appears safe to browse.";
+    default:
+      return "Unable to determine risk. Avoid sharing sensitive information until the site is verified.";
+  }
+}
+
+function factorStatus(f) {
+  if (f.status) return f.status;
+  const sev = f.severity;
+  if (sev === "critical" || sev === "high") return "danger";
+  return "warning";
+}
+
+const FACTOR_STATUS_LABEL = { safe: "SAFE", warning: "WARNING", danger: "DANGEROUS" };
+const FACTOR_ICON = { safe: "✓", warning: "⚠", danger: "🚨" };
+const SEVERITY_LABEL = { critical: "Critical", high: "High", medium: "Medium", low: "Low" };
+
+function envRenderRiskAnalysis(result, redirected) {
+  if (!envRiskAnalysis) return;
+  envRiskAnalysis.classList.remove("hidden");
+
+  const pred = (result.prediction || "unknown").toString().toLowerCase();
+  const score = Math.max(0, Math.min(100, Number(result.risk_score) || 0));
+
+  // ---- 1. Circular gauge (SVG ring, r=52) ----
+  const C = 2 * Math.PI * 52;
+  if (raGaugeArc) {
+    raGaugeArc.style.strokeDasharray = String(C);
+    // Double rAF lets the CSS stroke-dashoffset transition animate smoothly.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        raGaugeArc.style.strokeDashoffset = String(C * (1 - score / 100));
+      });
+    });
+  }
+  const gaugeColor =
+    pred === "safe" ? "#10B981" :
+    pred === "phishing" ? "#EF4444" :
+    pred === "suspicious" ? "#FBBF24" : "#8F9CAE";
+  if (raGaugeArc) raGaugeArc.style.stroke = gaugeColor;
+  if (raGaugeValue) raGaugeValue.textContent = String(score);
+
+  // ---- 2. Verdict + risk level ----
+  const verdictLabel =
+    pred === "safe" ? "🟢 SAFE" :
+    pred === "phishing" ? "🔴 PHISHING" :
+    pred === "suspicious" ? "🟡 SUSPICIOUS" : "❓ Unable to Determine";
+  if (raVerdict) {
+    raVerdict.textContent = verdictLabel;
+    raVerdict.className = `ra-verdict ${pred}`;
+  }
+  const riskLevel = result.risk_level || fallbackRiskLevel(pred);
+  const levelLabel =
+    riskLevel === "low" ? "Low Risk" :
+    riskLevel === "high" ? "High Risk" :
+    riskLevel === "suspicious" ? "Suspicious" : "Unknown risk";
+  if (raRiskLevel) raRiskLevel.textContent = `Risk Score ${score}/100 · ${levelLabel}`;
+
+  // ---- 3. Main reasons ----
+  const reasons = Array.isArray(result.explanation) ? result.explanation : [];
+  clearNode(raReasonsList);
+  if (raReasons) raReasons.style.display = reasons.length ? "" : "none";
+  reasons.forEach((reason) => {
+    const li = document.createElement("li");
+    li.textContent = reason;
+    if (raReasonsList) raReasonsList.appendChild(li);
+  });
+
+  // ---- 4. Recommended action ----
+  const rec = result.recommendation || fallbackRecommendation(pred);
+  if (raRecommendation) {
+    raRecommendation.textContent = rec;
+    raRecommendation.className = `ra-recommend ${pred}`;
+  }
+
+  // ---- 4b. Status pill badge (SAFE / SUSPICIOUS / DANGEROUS / UNKNOWN) ----
+  const pillText =
+    pred === "safe" ? "SAFE" :
+    pred === "phishing" ? "DANGEROUS" :
+    pred === "suspicious" ? "SUSPICIOUS" : "UNKNOWN";
+  if (raStatusPill) {
+    raStatusPill.textContent = pillText;
+    raStatusPill.className = `ra-status-pill ${pred}`;
+  }
+
+  // ---- 4c. Insight callout — headline reason behind the verdict ----
+  const insight = reasons[0] || rec;
+  if (raInsight) {
+    raInsight.textContent = insight;
+    raInsight.className = `ra-callout ${pred}`;
+  }
+
+  // ---- 5. Risk factors (safe results: none shown) ----
+  const showFactors = pred !== "safe";
+  const factors = showFactors && Array.isArray(result.risk_factors) ? result.risk_factors : [];
+  clearNode(raFactorList);
+  if (raFactorsBlock) raFactorsBlock.classList.toggle("hidden", !showFactors);
+  if (raNoFactors) raNoFactors.classList.toggle("hidden", showFactors);
+  if (raFactorTitle) raFactorTitle.textContent = "Risk Factors";
+  if (raFactorCount) raFactorCount.textContent = factors.length ? `${factors.length} found` : "";
+
+  factors.forEach((f) => {
+    const st = factorStatus(f);
+    const li = document.createElement("li");
+    li.className = `ra-factor ${st}`;
+
+    const icon = document.createElement("span");
+    icon.className = "ra-factor-icon";
+    icon.textContent = FACTOR_ICON[st] || "•";
+    li.appendChild(icon);
+
+    const body = document.createElement("div");
+    body.className = "ra-factor-body";
+
+    const name = document.createElement("div");
+    name.className = "ra-factor-name";
+    name.textContent = f.name || "Unknown factor";
+    const badge = document.createElement("span");
+    badge.className = `ra-factor-status ${st}`;
+    badge.textContent = FACTOR_STATUS_LABEL[st] || "WARNING";
+    name.appendChild(badge);
+    body.appendChild(name);
+
+    if (f.description) {
+      const desc = document.createElement("div");
+      desc.className = "ra-factor-desc";
+      desc.textContent = f.description;
+      body.appendChild(desc);
+    }
+
+    const imp = document.createElement("div");
+    imp.className = "ra-factor-imp";
+    imp.textContent = `Importance: ${SEVERITY_LABEL[f.severity] || f.severity || "Unknown"}`;
+    body.appendChild(imp);
+
+    li.appendChild(body);
+    if (raFactorList) raFactorList.appendChild(li);
+  });
+
+  // ---- 6. "What happens if I touch this URL?" (educational, never navigates) ----
+  clearNode(raTouchFlow);
+  const risky = pred === "phishing" || pred === "suspicious";
+  const steps = risky
+    ? [
+        { text: "You tap the URL", cls: "warn" },
+        { text: "Browser opens the destination", cls: "warn" },
+        { text: redirected ? "The URL redirects to another website" : "URL may redirect to another website", cls: "danger" },
+        { text: "Website may attempt to collect sensitive information", cls: "danger" },
+        { text: "Possible phishing/fraud risk", cls: "danger" },
+      ]
+    : [
+        { text: "You tap the URL", cls: "safe" },
+        { text: "Browser opens the expected website", cls: "safe" },
+        { text: "No suspicious behavior detected", cls: "safe" },
+      ];
+  steps.forEach((step, i) => {
+    const li = document.createElement("li");
+    li.className = step.cls;
+    const dot = document.createElement("span");
+    dot.className = "ra-flow-dot";
+    li.appendChild(dot);
+    const txt = document.createElement("span");
+    txt.textContent = step.text;
+    li.appendChild(txt);
+    if (raTouchFlow) raTouchFlow.appendChild(li);
+    if (i < steps.length - 1) {
+      const arrow = document.createElement("div");
+      arrow.className = "ra-flow-arrow";
+      arrow.textContent = "↓";
+      if (raTouchFlow) raTouchFlow.appendChild(arrow);
+    }
+  });
+
+  // ---- 7. Redirect visualization ----
+  const chain = Array.isArray(result.redirect_chain) ? result.redirect_chain : [];
+  clearNode(raRedirectFlow);
+  if (!redirected) {
+    if (raNoRedirect) raNoRedirect.textContent = "No redirect detected.";
+    if (raRedirectFlow) raRedirectFlow.classList.add("hidden");
+    return;
+  }
+  if (raNoRedirect) raNoRedirect.textContent = "";
+  if (raRedirectFlow) raRedirectFlow.classList.remove("hidden");
+  chain.forEach((hop, i) => {
+    const li = document.createElement("li");
+    li.className = hop.final ? "ra-final" : "";
+    const label = i === 0 ? "Original" : hop.final ? "Final" : `Redirect ${i}`;
+    li.textContent = `${label}: ${hop.url}  [HTTP ${hop.status}]`;
+    if (raRedirectFlow) raRedirectFlow.appendChild(li);
+    if (i < chain.length - 1) {
+      const arrow = document.createElement("div");
+      arrow.className = "ra-redirect-arrow";
+      arrow.textContent = "↓";
+      if (raRedirectFlow) raRedirectFlow.appendChild(arrow);
+    }
+  });
+}
+
+// ===========================================================================
 //  ENVIRONMENT SANDBOX
 //  Minimal view: inline Scan URL + Scan QR inputs. After a scan, shows the
 //  Source Node verdict badge and the Checks / Signals / Confidence stats.
 // ===========================================================================
 
+// DNS / URL-format validation banner shown BEFORE the phishing result.
+function envRenderValidation(result) {
+  if (!envValidation) return;
+  clearNode(envValidation);
+
+  if (result && result.error === "invalid_url" && result.detail) {
+    const d = result.detail;
+    envValidation.className = "env-validation err";
+    const main = document.createElement("div");
+    main.textContent = d.message || "Is not valid URL";
+    envValidation.appendChild(main);
+    if (d.explanation) {
+      const sub = document.createElement("div");
+      sub.className = "env-validation-sub";
+      sub.textContent = d.explanation;
+      envValidation.appendChild(sub);
+    }
+    return;
+  }
+
+  if (result && result.dns_valid) {
+    envValidation.className = "env-validation ok";
+    const main = document.createElement("div");
+    main.textContent = "URL is reachable through DNS";
+    envValidation.appendChild(main);
+    const sub = document.createElement("div");
+    sub.className = "env-validation-sub";
+    sub.textContent = "Continue to PhishGuard analysis..." +
+      (result.dns_hostname ? ` (${result.dns_hostname})` : "");
+    envValidation.appendChild(sub);
+    return;
+  }
+
+  if (result && result.dns_valid === false) {
+    envValidation.className = "env-validation warn";
+    const main = document.createElement("div");
+    main.textContent = "DNS check: domain could not be resolved";
+    envValidation.appendChild(main);
+    const sub = document.createElement("div");
+    sub.className = "env-validation-sub";
+    sub.textContent = "The URL did not resolve via DNS, so the verdict below is " +
+      "based on URL characteristics only. PhishGuard still never opened the URL.";
+    envValidation.appendChild(sub);
+    return;
+  }
+
+  envValidation.classList.add("hidden");
+}
+
 function envRenderResult(result) {
   if (!result) {
     if (envResults) envResults.classList.add("hidden");
+    if (envRiskAnalysis) envRiskAnalysis.classList.add("hidden");
+    envRenderValidation(null);
     return;
   }
   if (envResults) envResults.classList.remove("hidden");
+  envRenderValidation(result);
 
   const pred = result.prediction || "no_data";
   const url = result.url || "N/A";
@@ -922,6 +1226,7 @@ function envRenderResult(result) {
   const redirected = chain.length > 1 && !(chain.length === 1 && chain[0] && chain[0].final);
   if (redirected) signaled += 1;
   renderEnvRedirects(chain, redirected);
+  envRenderRiskAnalysis(result, redirected);
 
   if (envChecks) envChecks.textContent = "4 Probes";
   if (envSignals) {
@@ -1025,6 +1330,12 @@ async function envScanUrl(urlValue) {
   // Only render the freshest request's result — a newer scan supersedes this one.
   if (myToken !== envScanToken) return;
 
+  if (result && result.error === "invalid_url") {
+    envRenderValidation(result);
+    if (envResults) envResults.classList.add("hidden");
+    return;
+  }
+
   if (result && result.prediction) {
     envRenderResult(result);
   } else {
@@ -1047,6 +1358,11 @@ async function envScanUrl(urlValue) {
       }
     }
     if (myToken !== envScanToken) return;
+    if (result && result.error === "invalid_url") {
+      envRenderValidation(result);
+      if (envResults) envResults.classList.add("hidden");
+      return;
+    }
     if (result && result.prediction) {
       envRenderResult(result);
     } else if (envQrError) {

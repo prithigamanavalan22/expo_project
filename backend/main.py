@@ -14,6 +14,7 @@ SECURITY CONTROLS IMPLEMENTED:
   - API Logic Flaws: Rate limiting via slowapi; Pydantic input validation on all endpoints.
 """
 
+import asyncio
 import os
 import sys
 import base64
@@ -40,11 +41,13 @@ from ml_model.feature_extractor import extract_features
 from backend.analyzer import compute_report, lexical_risk, pick_verdict
 from backend.ai_detector import analyze_forensic, auto_depth_ftr
 from backend.auth import get_current_user
+from backend.blacklist_seed import hostname_of, run_blacklist_seed
 from backend.brand_checker import is_known_brand_domain, lookup_url
 from backend.config import settings
-from backend.database import Base, engine, get_db, init_db
+from backend.database import Base, SessionLocal, engine, get_db, init_db
+from backend.dns_check import validate_url_dns
 from backend.logging_setup import get_logger, log_scan
-from backend.models import BlacklistedDomain, ScannedURL, User
+from backend.models import BlacklistedDomain, ScannedURL, User, WhitelistedDomain
 from backend.qr_detector import QRDecodeError, decode_qr_from_bytes, extract_urls
 from backend.redirect_resolver import resolve_redirects
 from backend.risk_factors import risk_factors
@@ -59,6 +62,8 @@ from backend.schemas import (
     UserLogin,
     UserRegister,
     UserResponse,
+    WhitelistAddRequest,
+    WhitelistResponse,
 )
 from backend.security import (
     SecurityHeadersMiddleware,
@@ -107,8 +112,20 @@ def load_ml_model():
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle — init DB and load ML model on boot."""
+    """Startup/shutdown lifecycle — init DB, seed blacklist, load ML model."""
     init_db()
+
+    # Idempotent: load known PhishTank phishing hosts into BlacklistedDomain so
+    # even dead/taken-down phishing domains are flagged immediately.
+    if settings.SEED_PHISHTANK_BLACKLIST:
+        db = SessionLocal()
+        try:
+            seeded = run_blacklist_seed(db)
+            print(f"[+] Blacklist seed: {seeded} known phishing domain(s) loaded")
+            get_logger().info("STARTUP  Blacklist seed: %d domain(s) loaded", seeded)
+        finally:
+            db.close()
+
     load_ml_model()
     get_logger().info("STARTUP  PhishGuard backend is up and serving on http://127.0.0.1:8000")
     yield
@@ -217,6 +234,34 @@ async def login(request: Request, body: UserLogin, db: Session = Depends(get_db)
 #  SCAN ENDPOINT (JWT-Protected)
 # ===========================================================================
 
+def _risk_level(prediction: str) -> str:
+    """Map a verdict to a display risk tier (kept in sync with the analyzer tiers)."""
+    return {
+        "safe": "low",
+        "suspicious": "suspicious",
+        "phishing": "high",
+        "unknown": "unknown",
+    }.get(prediction, "unknown")
+
+
+def _recommendation(prediction: str) -> str:
+    """Static, verdict-derived action guidance — never influenced by user input."""
+    return {
+        "phishing": (
+            "Do not enter passwords, OTPs, banking information, or other "
+            "sensitive information on this website."
+        ),
+        "suspicious": (
+            "Proceed with caution. Verify the exact domain in the address bar "
+            "and look for HTTPS before entering personal or financial information."
+        ),
+        "safe": "No significant threats detected. This URL appears safe to browse.",
+        "unknown": (
+            "Unable to determine risk. Avoid sharing sensitive information "
+            "until the site is verified."
+        ),
+    }.get(prediction, "")
+
 @app.post(
     f"{settings.API_V1_PREFIX}/scan",
     response_model=ScanResponse,
@@ -243,6 +288,35 @@ async def scan_url(
     """
     url = body.url.strip()
 
+    # =========================================================================
+    #  DNS VALIDATION GATE (runs BEFORE any phishing analysis)
+    #  Confirms the entered value is a well-formed HTTP/HTTPS URL and that its
+    #  hostname resolves through DNS. DNS resolution only — it never opens,
+    #  visits, crawls, or executes the URL, and sends nothing to the site.
+    #
+    #  SEMANTICS:
+    #    - Format failure (no scheme / no usable hostname) -> HARD stop,
+    #      "Is not valid URL". This is the only case analysis does not run.
+    #    - DNS resolution failure with an otherwise well-formed URL -> the
+    #      analysis STILL RUNS. A domain can be dead (taken-down phishing,
+    #      a dataset entry, etc.) yet still deserve a verdict. The response
+    #      carries dns_valid=false so the UI can show a warning while the
+    #      PhishGuard engine scores the URL on its own characteristics.
+    # =========================================================================
+    validation = await asyncio.to_thread(validate_url_dns, url)
+    if not validation["url_valid"] and not validation["hostname"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "url_valid": False,
+                "dns_valid": validation["dns_valid"],
+                "hostname": validation["hostname"],
+                "message": validation["message"],
+                "explanation": validation["explanation"],
+            },
+        )
+    dns_validation = validation
+
     # SECURITY: Sanitize URL before any processing or storage
     clean_url = sanitize_url(url)
 
@@ -266,11 +340,18 @@ async def scan_url(
     parsed = urlparse(analysis_url)
     hostname = parsed.hostname or ""
 
+    # Admin-confirmed safe host: overrides the blacklist and blocks any future
+    # auto-blacklist. A first (possibly noisy) ML call must never permanently
+    # brand a legitimate domain PHISHING.
+    whitelisted = db.query(WhitelistedDomain).filter(
+        WhitelistedDomain.domain == hostname
+    ).first()
+
     blacklisted = db.query(BlacklistedDomain).filter(
         BlacklistedDomain.domain == hostname
     ).first()
 
-    if blacklisted:
+    if blacklisted and whitelisted is None:
         # Blacklisted domain — immediate phishing verdict
         result = ScanResponse(
             id=0,
@@ -278,7 +359,18 @@ async def scan_url(
             prediction="phishing",
             confidence=1.0,
             scanned_at=datetime.now(timezone.utc),
+            risk_score=95,
+            risk_level="high",
+            recommendation=_recommendation("phishing"),
+            final_url=analysis_url,
+            dns_valid=dns_validation["dns_valid"],
+            dns_hostname=dns_validation["hostname"],
             redirect_chain=redir_chain,
+            risk_factors=risk_factors(
+                url=analysis_url,
+                hostname=hostname,
+                blacklisted=True,
+            ),
         )
 
         # Log the scan to the database
@@ -329,19 +421,39 @@ async def scan_url(
     #  The unique constraint on `domain` ensures each domain is added only once.
     #
     #  PROTECTION (false-positive prevention): We ONLY auto-blacklist when the
-    #  high-confidence ML verdict is CORROBORATED by real structural phishing
-    #  signals. Our ML model alone can misclassify clean domains (google.com,
-    #  example.com) as phishing, so a high model confidence by itself is NOT
-    #  enough to blacklist a domain for everyone. We also never blacklist a
-    #  known legitimate brand domain.
+    #  high-confidence ML verdict is CORROBORATED by strong, independent
+    #  structural phishing signals (lexical >= 30/60 AND at least one "hard"
+    #  lexical reason such as raw-IP, '@', missing HTTPS, deep subdomains ...).
+    #  A single high confidence call against a merely "new-looking" domain
+    #  (e.g. a fresh college-event site on .tech/.site) is NOT enough — that
+    #  would permanently lock a legit site into the blacklist. We also never
+    #  blacklist a known legitimate brand domain, a whitelisted domain, or a
+    #  domain that does not even resolve through DNS.
     # =========================================================================
-    lex_points, _lex_reasons = lexical_risk(analysis_url, hostname)
+    _STRONG_LEXICAL_MARKERS = (
+        "unusually long",      # very_long
+        "'@' symbol",          # at_symbol
+        "raw IP address",      # ip_address
+        "hyphens, a common trick",  # many_hyphens
+        "does not use HTTPS",  # no_https
+        "subdomain levels",    # deep_subdomains
+        "proportion of the URL is digits",  # digit_heavy
+        "trust-bait word",     # trustword_subdomain
+        "known free/fake subdomain host",   # free-subdomain hosting
+    )
+    lex_points, lex_signals = lexical_risk(analysis_url, hostname)
+    strong_lexical = any(
+        m in r for r in lex_signals for m in _STRONG_LEXICAL_MARKERS
+    )
     if (
         prediction == "phishing"
-        and confidence >= 0.95
+        and confidence >= 0.97
         and hostname
         and not is_known_brand_domain(hostname)
-        and lex_points >= 20            # corroborating structural red flags
+        and whitelisted is None
+        and dns_validation["dns_valid"]
+        and lex_points >= 30
+        and strong_lexical
     ):
         # SECURITY: Parameterized ORM query — check it's not already blacklisted
         already_blacklisted = db.query(BlacklistedDomain).filter(
@@ -368,7 +480,9 @@ async def scan_url(
     #  fast scan, a high-risk URL automatically escalates to a forensic pass
     #  that includes the visual screenshot check — the "AI" auto-detection.
     # =========================================================================
-    known_brand = bool(hostname) and is_known_brand_domain(hostname)
+    known_brand = bool(hostname) and (
+        is_known_brand_domain(hostname) or whitelisted is not None
+    )
 
     forensic = analyze_forensic(
         url=analysis_url,
@@ -438,6 +552,8 @@ async def scan_url(
         blacklisted=False,
         visual=visual_result,
     )
+    if final_verdict == "safe":
+        factors = []
 
     # --- Log to database ---
     # SECURITY: analysis_url (sanitized / final landing URL) is stored, not raw input
@@ -463,6 +579,11 @@ async def scan_url(
         confidence=log_entry.confidence,
         scanned_at=log_entry.scanned_at,
         risk_score=report.score,
+        risk_level=_risk_level(final_verdict),
+        recommendation=_recommendation(final_verdict),
+        final_url=analysis_url,
+        dns_valid=dns_validation["dns_valid"],
+        dns_hostname=dns_validation["hostname"],
         explanation=report.reasons,
         sandbox=sandbox_findings,
         redirect_chain=redir_chain,
@@ -548,13 +669,16 @@ async def scan_qr_code(
             _pred = "phishing" if "@" in u or _up(u).hostname and any(c.isdigit() for c in _up(u).hostname) else "safe"
             _conf = 0.5
 
-        # Blacklist check (parameterized ORM)
+        # Blacklist check (parameterized ORM) — overridable by whitelist
         bl = db.query(BlacklistedDomain).filter(
             BlacklistedDomain.domain == u_host
         ).first()
+        wl = db.query(WhitelistedDomain).filter(
+            WhitelistedDomain.domain == u_host
+        ).first()
 
         # Blacklisted domains return immediately — no heavy analysis needed.
-        if bl is not None:
+        if bl is not None and wl is None:
             results.append(ScanResponse(
                 id=0,
                 url=clean_u,
@@ -562,12 +686,15 @@ async def scan_qr_code(
                 confidence=1.0,
                 scanned_at=datetime.now(timezone.utc),
                 risk_score=95,
+                risk_level="high",
+                recommendation=_recommendation("phishing"),
+                final_url=clean_u,
                 explanation=["This domain is on the known phishing blacklist."],
-                risk_factors=[{
-                    "code": "blacklist", "name": "Known phishing blacklist hit",
-                    "severity": "critical",
-                    "description": "This domain is on the phishing blacklist.",
-                }],
+                risk_factors=risk_factors(
+                    url=clean_u,
+                    hostname=u_host,
+                    blacklisted=True,
+                ),
                 brand=lookup_url(clean_u),
             ))
             continue
@@ -595,7 +722,9 @@ async def scan_qr_code(
             parsed_hostname=u_host,
             blacklisted=False,
             sandbox=sb,
-            known_brand=bool(u_host) and is_known_brand_domain(u_host),
+            known_brand=bool(u_host) and (
+                is_known_brand_domain(u_host) or wl is not None
+            ),
             visual=visual_result,
         )
 
@@ -621,6 +750,8 @@ async def scan_qr_code(
             blacklisted=False,
             visual=visual_result,
         )
+        if report.verdict == "safe":
+            factors = []
 
         log_qr = ScannedURL(
             user_id=current_user.id,
@@ -639,6 +770,9 @@ async def scan_qr_code(
             confidence=log_qr.confidence,
             scanned_at=log_qr.scanned_at,
             risk_score=report.score,
+            risk_level=_risk_level(report.verdict),
+            recommendation=_recommendation(report.verdict),
+            final_url=clean_u,
             explanation=report.reasons,
             sandbox=sb,
             redirect_chain=(sb or {}).get("redirect_chain", []),
@@ -664,6 +798,94 @@ async def scan_qr_code(
         summary=summary,
         no_urls=False,
     )
+
+
+# ===========================================================================
+#  WHITELIST ENDPOINTS (JWT-Protected)
+#  Admin-confirmed safe domains. Whitelisting removes the host from the
+#  blacklist and permanently protects it from the auto-blacklist + instant
+#  block, and neutralizes a lone high-confidence ML "phishing" verdict.
+# ===========================================================================
+
+@app.post(
+    f"{settings.API_V1_PREFIX}/blacklist/whitelist",
+    response_model=WhitelistResponse,
+    tags=["Blacklist"],
+)
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+async def whitelist_domain(
+    request: Request,
+    body: WhitelistAddRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db),
+):
+    """
+    Mark a host as admin-confirmed safe.
+
+    - Removes the host (and its www-variant) from BlacklistedDomain.
+    - Adds it to WhitelistedDomain so it is never instant-blocked or
+      re-auto-blacklisted, and a lone ML 'phishing' verdict is treated as
+      a miscall (like a known brand).
+    """
+    host = hostname_of(body.domain) or ""
+    if not host:
+        raise HTTPException(status_code=400, detail="Enter a valid host/domain.")
+
+    removed = 0
+    for cand in (host, "www." + host):
+        row = db.query(BlacklistedDomain).filter(
+            BlacklistedDomain.domain == cand
+        ).first()
+        if row is not None:
+            db.delete(row)
+            removed += 1
+    if removed:
+        db.commit()
+
+    existing = db.query(WhitelistedDomain).filter(
+        WhitelistedDomain.domain == host
+    ).first()
+    if existing is None:
+        db.add(
+            WhitelistedDomain(
+                domain=host,
+                reason=body.reason or "Admin-confirmed safe domain",
+            )
+        )
+        db.commit()
+
+    return WhitelistResponse(
+        domain=host,
+        whitelisted=True,
+        removed_from_blacklist=removed,
+    )
+
+
+@app.delete(
+    f"{settings.API_V1_PREFIX}/blacklist/whitelist/{{domain}}",
+    response_model=WhitelistResponse,
+    tags=["Blacklist"],
+)
+@limiter.limit(settings.RATE_LIMIT_AUTH)
+async def unwhitelist_domain(
+    domain: str,
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db),
+):
+    """Remove a host from the whitelist (normal detection resumes)."""
+    host = hostname_of(domain) or ""
+    if not host:
+        raise HTTPException(status_code=400, detail="Enter a valid host/domain.")
+
+    row = db.query(WhitelistedDomain).filter(
+        WhitelistedDomain.domain == host
+    ).first()
+    if row is not None:
+        db.delete(row)
+        db.commit()
+
+    return WhitelistResponse(domain=host, whitelisted=False)
 
 
 # ===========================================================================

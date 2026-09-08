@@ -77,3 +77,24 @@ class BlacklistedDomain(Base):
 
     def __repr__(self):
         return f"<BlacklistedDomain(domain='{self.domain}')>"
+
+
+class WhitelistedDomain(Base):
+    """
+    Admin-confirmed safe domains.
+    A whitelisted domain is NEVER instant-blocked by the blacklist and is
+    excluded from future auto-blacklisting. It also neutralizes a lone
+    high-confidence ML "phishing" verdict (treated like a known brand) so a
+    legitimate new site can never be permanently branded PHISHING by noise.
+    """
+    __tablename__ = "whitelisted_domains"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain: Mapped[str] = mapped_column(String(256), unique=True, nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(Text, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    def __repr__(self):
+        return f"<WhitelistedDomain(domain='{self.domain}')>"

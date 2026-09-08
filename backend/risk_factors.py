@@ -19,10 +19,23 @@ from urllib.parse import urlparse
 # Structured factor helper
 # ---------------------------------------------------------------------------
 def _f(code: str, name: str, severity: str, description: str) -> dict:
+    """Build a factor dict. `status` is a presentational mapping of `severity`:
+    critical/high -> dangerous, medium/low -> warning, and the no-signals
+    marker (code='no_signals') -> safe.
+    """
+    status = {
+        "critical": "danger",
+        "high": "danger",
+        "medium": "warning",
+        "low": "warning",
+    }.get(severity, "warning")
+    if code == "no_signals":
+        status = "safe"
     return {
         "code": code,
         "name": name,
         "severity": severity,
+        "status": status,
         "description": description,
     }
 

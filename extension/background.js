@@ -217,6 +217,18 @@ async function scanURL(url, includeAnalysis = false) {
         console.warn("[PhishGuard] Authentication required (re-login failed).");
         return { prediction: "unknown", confidence: 0, error: "auth_required" };
       }
+      // DNS / URL-format validation gate failure (backend 422) -> surface a
+      // clean "Is not valid URL" result so the UI can explain it.
+      if (response.status === 422) {
+        let detail = null;
+        try {
+          const parsed = await response.json();
+          detail = parsed && parsed.detail ? parsed.detail : null;
+        } catch (e) { /* non-JSON body — fall back to generic api_error */ }
+        if (detail && detail.url_valid === false) {
+          return { prediction: "unknown", confidence: 0, error: "invalid_url", detail: detail };
+        }
+      }
       console.error(`[PhishGuard] API error: ${response.status}`);
       return { prediction: "unknown", confidence: 0, error: "api_error" };
     }
@@ -282,11 +294,17 @@ async function processScanResult(url, result, tabId) {
     prediction: prediction,
     confidence: result.confidence || 0,
     risk_score: result.risk_score || 0,
+    risk_level: result.risk_level || "unknown",
+    recommendation: result.recommendation || "",
+    final_url: result.final_url || url,
     explanation: Array.isArray(result.explanation) ? result.explanation : [],
     sandbox: result.sandbox || null,
     redirect_chain: Array.isArray(result.redirect_chain) ? result.redirect_chain : [],
     risk_factors: Array.isArray(result.risk_factors) ? result.risk_factors : [],
     brand: result.brand || null,
+    visual_brand: result.visual_brand || null,
+    analysis_depth: result.analysis_depth || null,
+    auto_escalated: Boolean(result.auto_escalated),
     timestamp: Date.now(),
     scanId: result.id || null,
   };
@@ -465,6 +483,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const result = await scanURL(url, true);
+        if (result && result.error === "invalid_url") {
+          // DNS/format validation failed — report it without touching the
+          // badge/overlay state (no real scan happened).
+          sendResponse({ success: true, result: result });
+          return;
+        }
         if (result && result.prediction) {
           await processScanResult(url, result, null);
           sendResponse({ success: true, result: result });

@@ -38,6 +38,12 @@ class Settings:
     RATE_LIMIT_SCAN: str = "30/minute"
     RATE_LIMIT_AUTH: str = "10/minute"
 
+    # --- PhishTank Blacklist Seeding ---
+    # On startup, load known-phishing hosts from the dataset CSV into the
+    # BlacklistedDomain table (idempotent) so dead/taken-down phishing domains
+    # from PhishTank still get an instant phishing verdict. Set to "0" to skip.
+    SEED_PHISHTANK_BLACKLIST: bool = os.getenv("SEED_PHISHTANK_BLACKLIST", "1") == "1"
+
     # --- ML Model ---
     ML_MODEL_PATH: str = os.path.join(
         Path(__file__).resolve().parent.parent, "ml_model", "model", "phishing_model.pkl"

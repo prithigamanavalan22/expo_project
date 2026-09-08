@@ -117,6 +117,18 @@ class ScanResponse(BaseModel):
     confidence: float
     scanned_at: datetime
     risk_score: int = Field(0, description="Risk score from 0 (safe) to 100 (phishing)")
+    risk_level: str = Field(
+        "unknown",
+        description="Display risk tier derived from the verdict: low | suspicious | high | unknown.",
+    )
+    recommendation: str = Field(
+        default="",
+        description="Actionable guidance for the user based on the verdict.",
+    )
+    final_url: str = Field(
+        default="",
+        description="Final landing URL after unwrapping any redirects.",
+    )
     explanation: list[str] = Field(
         default_factory=list,
         description="Human-readable reasons why the URL was given this verdict.",
@@ -149,6 +161,14 @@ class ScanResponse(BaseModel):
         default=False,
         description="True when AI auto-escalated the analysis depth beyond what was requested.",
     )
+    dns_valid: Optional[bool] = Field(
+        default=None,
+        description="True when the hostname resolved through DNS in the pre-analysis gate; null when not checked.",
+    )
+    dns_hostname: Optional[str] = Field(
+        default=None,
+        description="Hostname that passed the DNS validation gate.",
+    )
 
     model_config = {"from_attributes": True}
 
@@ -174,6 +194,23 @@ class DashboardResponse(BaseModel):
     phishing_count: int
     safe_count: int
     history: list[ScanHistoryItem]
+
+
+# ---------------------------------------------------------------------------
+# Whitelist Schemas
+# ---------------------------------------------------------------------------
+
+class WhitelistAddRequest(BaseModel):
+    """A domain an admin wants to protect from false-positive flags."""
+    domain: str = Field(..., min_length=3, max_length=256)
+    reason: str | None = Field(None, max_length=256)
+
+
+class WhitelistResponse(BaseModel):
+    """Result of a whitelist add/remove operation."""
+    domain: str
+    whitelisted: bool
+    removed_from_blacklist: int = 0
 
 
 # ---------------------------------------------------------------------------

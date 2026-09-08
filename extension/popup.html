@@ -6,700 +6,627 @@
   <title>PhishGuard</title>
   <style>
     /* ============================================================
-       PhishGuard Popup Stylesheet
-       SECURITY: No external resources loaded — fully self-contained.
-       All values set via CSS, no inline JS execution.
+       PhishGuard Popup — Design System
+       SECURITY: Fully self-contained. No external/CDN resources.
+       Palette: Slate-950 bg, Slate-900 surfaces, Emerald / Crimson
+       / Indigo accents (Tailwind-equivalent tokens below).
        ============================================================ */
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --bg:         #0F172A;   /* slate-950 */
+      --surface:    #1E293B;   /* slate-900 */
+      --surface-2:  #1A2637;   /* raised / input bg */
+      --border:     #334155;   /* slate-700 */
+      --border-soft:#293648;
+      --text:       #E2E8F0;   /* slate-200 */
+      --text-2:     #A9B6C9;
+      --text-3:     #8B98AC;
+      --muted:      #64748B;   /* slate-500 */
+
+      --emerald:       #10B981;
+      --emerald-strong:#0EA371;
+      --emerald-text:  #6EE7B7;
+      --crimson:       #EF4444;
+      --crimson-text:  #FCA5A5;
+      --amber:         #F59E0B;
+      --amber-text:    #FBBF24;
+      --indigo:        #6366F1;
+      --indigo-strong: #4F46E5;
+
+      --radius:   14px;
+      --radius-sm:9px;
+      --ring: 0 0 0 3px rgba(99, 102, 241, 0.35);
+      --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 28px -18px rgba(0,0,0,.85);
     }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       width: 380px;
-      min-height: 200px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0f172a;
-      color: #e2e8f0;
+      max-height: 560px;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 12px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .header {
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      padding: 16px 20px;
-      border-bottom: 1px solid #1e293b;
+    /* Thin custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    .hidden { display: none !important; }
+
+    /* ============================================================
+       HEADER
+       ============================================================ */
+    .pg-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .pg-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .pg-shield {
+      display: grid; place-items: center;
+      width: 36px; height: 36px;
+      font-size: 18px;
+      border-radius: 10px;
+      background: linear-gradient(160deg, #24334a, #16202e);
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 14px -6px rgba(0,0,0,.7), 0 0 0 1px rgba(99,102,241,.16) inset;
+      flex-shrink: 0;
+    }
+    .pg-name {
+      font-size: 14px; font-weight: 800; letter-spacing: .2px;
+      color: var(--text); line-height: 1.1;
+    }
+    .pg-version {
+      display: inline-block;
+      font-size: 10px; font-weight: 700; color: var(--text-2);
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 2px 7px; border-radius: 999px; margin-top: 3px;
     }
 
-    .header .shield {
-      font-size: 28px;
+    .pg-user {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      padding: 5px 10px; border-radius: 999px;
+      flex-shrink: 0;
     }
-
-    .header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      color: #f1f5f9;
-    }
-
-    .header .version {
-      font-size: 11px;
-      color: #64748b;
-      margin-left: auto;
-    }
-
-    /* --- Login Section --- */
-    .login-section {
-      padding: 20px;
-    }
-
-    .login-section h2 {
-      font-size: 14px;
-      color: #94a3b8;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .input-group {
-      margin-bottom: 10px;
-    }
-
-    .input-group label {
-      display: block;
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 4px;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      background-color: #1e293b;
-      color: #e2e8f0;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .input-group input:focus {
-      border-color: #3b82f6;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
-    }
-
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .btn-primary {
-      background-color: #3b82f6;
-      color: #ffffff;
-    }
-
-    .btn-primary:hover {
-      background-color: #2563eb;
-    }
-
-    .btn-scan {
-      background-color: #22c55e;
-      color: #ffffff;
-      margin-top: 12px;
-    }
-
-    .btn-scan:hover {
-      background-color: #16a34a;
-    }
-
-    .btn-logout {
-      background-color: transparent;
-      border: 1px solid #475569;
-      color: #94a3b8;
-      margin-top: 8px;
-    }
-
-    .btn-logout:hover {
-      background-color: #1e293b;
-    }
-
-    .error-text {
-      color: #ef4444;
-      font-size: 12px;
-      margin-top: 4px;
-      display: none;
-    }
-
-    .link-text {
-      font-size: 12px;
-      color: #64748b;
-      margin-top: 12px;
-      text-align: center;
-    }
-
-    .link-text a {
-      color: #3b82f6;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .link-text a:hover {
-      text-decoration: underline;
-    }
-
-    /* --- Dashboard Section --- */
-    .dashboard {
-      padding: 16px 20px;
-    }
-
-    .user-info {
-      font-size: 13px;
-      color: #94a3b8;
-      margin-bottom: 12px;
-    }
-
-    .user-info strong {
-      color: #e2e8f0;
-    }
-
-    /* --- Scan Result --- */
-    .scan-result {
-      padding: 16px 20px;
-    }
-
-    .status-card {
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      margin-bottom: 12px;
-    }
-
-    .status-card.safe {
-      background: linear-gradient(135deg, #065f46, #064e3b);
-      border: 1px solid #22c55e;
-    }
-
-    .status-card.phishing {
-      background: linear-gradient(135deg, #7f1d1d, #991b1b);
-      border: 1px solid #ef4444;
-    }
-
-    .status-card.unknown {
-      background: linear-gradient(135deg, #1e293b, #334155);
-      border: 1px solid #64748b;
-    }
-
-    .status-icon {
-      font-size: 48px;
-      margin-bottom: 8px;
-    }
-
-    .status-text {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .status-card.safe .status-text {
-      color: #4ade80;
-    }
-
-    .status-card.phishing .status-text {
-      color: #f87171;
-    }
-
-    .status-card.unknown .status-text {
-      color: #94a3b8;
-    }
-
-    .confidence-bar {
-      width: 100%;
-      height: 6px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
-      margin-top: 10px;
-      overflow: hidden;
-    }
-
-    .confidence-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.5s ease;
-    }
-
-    .scanned-url {
-      font-size: 11px;
-      color: #64748b;
-      word-break: break-all;
-      margin-top: 8px;
-      padding: 8px;
-      background-color: rgba(0, 0, 0, 0.2);
-      border-radius: 6px;
-    }
-
-    /* --- History List --- */
-    .history-section {
-      padding: 0 20px 16px;
-    }
-
-    .history-section h3 {
-      font-size: 12px;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-
-    .history-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      background-color: #1e293b;
-    }
-
-    .history-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .pg-user-label { font-size: 10px; color: var(--text-3); }
+    .pg-user-name { font-size: 11px; font-weight: 700; color: var(--text); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pg-user-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px rgba(16, 185, 129, .8);
       flex-shrink: 0;
     }
 
-    .history-dot.safe {
-      background-color: #22c55e;
+    /* ============================================================
+       AUTH (Sign In / Register)
+       ============================================================ */
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 18px;
     }
+    .auth-head { text-align: center; margin-bottom: 18px; }
+    .auth-icon { font-size: 24px; }
+    .auth-head h2 { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 8px; }
+    .auth-head p { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 
-    .history-dot.phishing {
-      background-color: #ef4444;
-    }
-
-    .history-url {
-      font-size: 12px;
-      color: #cbd5e1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* --- Loading Spinner --- */
-    .spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #475569;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      margin: 16px auto;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .divider {
-      border: none;
-      border-top: 1px solid #1e293b;
-      margin: 12px 0;
-    }
-
-    /* --- Scan Tabs (URL / QR) --- */
-    .tab-bar {
-      display: flex;
-      gap: 6px;
-      margin: 10px 0 12px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      background-color: #1e293b;
-      color: #94a3b8;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-    }
-
-    .tab-btn.active {
-      background-color: #3b82f6;
-      border-color: #3b82f6;
-      color: #ffffff;
-    }
-
-    .tab-panel {
-      padding: 4px 0;
-    }
-
-    /* --- Risk Score Meter --- */
-    .risk-meter {
-      margin-top: 14px;
-    }
-
-    .risk-meter .risk-label-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #94a3b8;
-      margin-bottom: 4px;
-    }
-
-    .risk-meter .risk-value {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .risk-bar {
-      width: 100%;
-      height: 12px;
-      background: linear-gradient(90deg, #22c55e, #eab308 55%, #ef4444);
-      border-radius: 6px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .risk-marker {
-      position: absolute;
-      top: -3px;
-      width: 6px;
-      height: 18px;
-      background-color: #0f172a;
-      border: 2px solid #ffffff;
-      border-radius: 3px;
-      transform: translateX(-50%);
-      transition: left 0.5s ease;
-    }
-
-    /* --- Explanation / Why --- */
-    .why-section {
-      margin-top: 14px;
-    }
-
-    .why-section h4 {
-      font-size: 12px;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 6px;
-    }
-
-    .why-list {
-      list-style: none;
-    }
-
-    .why-list li {
-      font-size: 12px;
-      color: #cbd5e1;
-      padding: 6px 8px;
-      border-radius: 6px;
-      background-color: rgba(0, 0, 0, 0.2);
-      margin-bottom: 4px;
-      line-height: 1.4;
-    }
-
-    .why-list li::before {
-      content: "•";
-      color: #3b82f6;
-      margin-right: 6px;
-    }
-
-    /* --- Sandbox Details --- */
-    .sandbox-section {
-      margin-top: 14px;
-      display: none;
-    }
-
-    .sandbox-section h4 {
-      font-size: 12px;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 6px;
-    }
-
-    .sandbox-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    .sandbox-item {
-      background-color: rgba(0, 0, 0, 0.2);
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 11px;
-      color: #cbd5e1;
-    }
-
-    .sandbox-item .sb-label {
+    .input-group { margin-bottom: 12px; }
+    .input-group label {
       display: block;
-      color: #64748b;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      font-size: 10px; font-weight: 600; color: var(--text-2);
+      margin-bottom: 5px; letter-spacing: .3px;
     }
-
-    .sandbox-item .sb-bad {
-      color: #f87171;
-      font-weight: 600;
+    .input-group input {
+      width: 100%; height: 40px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background-color: var(--surface-2);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
     }
+    .input-group input::placeholder { color: var(--muted); }
+    .input-group input:focus { border-color: var(--indigo); box-shadow: var(--ring); }
 
-    .sandbox-item .sb-good {
-      color: #4ade80;
-      font-weight: 600;
-    }
-
-    /* --- QR Scanner --- */
-    .qr-dropzone {
-      border: 2px dashed #334155;
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      color: #64748b;
-      font-size: 13px;
-      cursor: pointer;
-      transition: border-color 0.2s, background-color 0.2s;
-      margin-bottom: 10px;
-    }
-
-    .qr-dropzone:hover {
-      border-color: #3b82f6;
-      background-color: rgba(59, 130, 246, 0.08);
-    }
-
-    .qr-dropzone input[type="file"] {
-      display: none;
-    }
-
-    .qr-preview {
-      max-width: 140px;
-      max-height: 140px;
-      border-radius: 8px;
-      margin: 0 auto 10px;
-      display: block;
-    }
-
-    .qr-result-card {
-      border-radius: 10px;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 13px;
-      color: #e2e8f0;
-      background-color: #1e293b;
-    }
-
-    .qr-result-card.safe { border: 1px solid #22c55e; }
-    .qr-result-card.phishing { border: 1px solid #ef4444; }
-    .qr-result-card.suspicious { border: 1px solid #eab308; }
-
-    .qr-url {
-      font-size: 11px;
-      color: #64748b;
-      word-break: break-all;
-      margin-top: 6px;
-    }
-
-    .danger-banner {
-      background-color: rgba(239, 68, 68, 0.15);
-      border: 1px solid #ef4444;
-      color: #f87171;
-      padding: 8px 10px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-top: 10px;
-    }
+    .error-text { color: var(--crimson-text); font-size: 11px; margin-top: 6px; display: none; }
+    .link-text { font-size: 11px; color: var(--text-3); margin-top: 14px; text-align: center; }
+    .link-text a { color: var(--indigo); text-decoration: none; font-weight: 600; cursor: pointer; }
+    .link-text a:hover { text-decoration: underline; }
 
     /* ============================================================
-       Environment Sandbox Dashboard (embedded in popup)
-       Minimal view: Scan URL + Scan QR inputs, results show the
-       Source Node badge and the stats row only.
+       BUTTONS
        ============================================================ */
-    #envScanPanel {
-      background: #0F1319;
-      border-radius: 10px;
-      padding: 14px;
-      max-height: 520px;
-      overflow-y: auto;
-      color: #FFFFFF;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      height: 40px; padding: 0 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-size: 12px; font-weight: 700; letter-spacing: .2px;
+      cursor: pointer;
+      transition: filter .15s ease, transform .06s ease, background-color .15s ease, border-color .15s ease;
+      user-select: none;
+      font-family: inherit;
     }
-    .env-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .env-brand { display: flex; align-items: center; gap: 8px; }
-    .env-shield { font-size: 20px; }
-    .env-title { font-size: 13px; font-weight: 700; color: #FFFFFF; }
-    .env-subtitle { font-size: 9px; color: #8F9CAE; text-transform: uppercase; letter-spacing: .5px; }
+    .btn:active { transform: translateY(1px) scale(.995); }
+
+    .btn-scan {
+      width: 100%; height: 42px;
+      background: linear-gradient(180deg, var(--emerald), var(--emerald-strong));
+      color: #04110c;
+      box-shadow: 0 8px 18px -8px rgba(16,185,129,.75);
+    }
+    .btn-scan:hover { filter: brightness(1.08); }
+    #envUrlScanBtn { margin-top: 0; }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--indigo), var(--indigo-strong));
+      color: #fff;
+      box-shadow: 0 8px 18px -8px rgba(99,102,241,.7);
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+
+    /* ============================================================
+       SECTION: TARGET URL ENVIRONMENT
+       ============================================================ */
+    .env-section-title {
+      font-size: 10px; font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .env-section-title::after {
+      content: ""; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    .env-scanurl { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .env-url-input {
+      width: 100%; height: 42px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background-color: var(--surface-2);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .env-url-input::placeholder { color: var(--muted); }
+    .env-url-input:focus { border-color: var(--indigo); box-shadow: var(--ring); }
+
+    /* Secondary action: QR upload box (indigo = interactive) */
+    .env-qr { margin-bottom: 14px; }
+    .env-qr-drop {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      border: 1.5px dashed #4F5E74;
+      border-radius: var(--radius);
+      padding: 16px;
+      background: var(--surface);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color .2s ease, background-color .2s ease;
+    }
+    .env-qr-drop:hover { border-color: var(--indigo); background: rgba(99,102,241,.06); }
+    .env-qr-drop .qr-title { font-size: 12px; font-weight: 600; color: var(--text); }
+    .env-qr-drop .qr-hint { font-size: 10px; color: var(--text-3); }
+    .env-qr-drop input { display: none; }
+
+    /* ============================================================
+       GENERIC CARD
+       ============================================================ */
+    .env-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .env-box-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .env-box-label::after {
+      content: ""; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    .env-results-url {
+      font-size: 11px; color: var(--text-3); word-break: break-all;
+      padding: 8px 10px; margin-bottom: 12px;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+    }
+
+    .spinner {
+      display: block;
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--emerald);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      margin: 12px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ============================================================
+       DNS VALIDATION BANNER
+       ============================================================ */
+    .env-validation {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 12px; margin-bottom: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600; line-height: 1.45; word-break: break-word;
+    }
+    .env-validation.ok  { color: var(--emerald-text); background: rgba(16,185,129,.09); border: 1px solid rgba(16,185,129,.35); }
+    .env-validation.ok::before  { content: "✓"; font-weight: 800; flex-shrink: 0; }
+    .env-validation.err { color: var(--crimson-text); background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.4); }
+    .env-validation.err::before { content: "✕"; font-weight: 800; flex-shrink: 0; }
+    .env-validation.warn{ color: var(--amber-text);  background: rgba(245,158,11,.09); border: 1px solid rgba(245,158,11,.38); }
+    .env-validation.warn::before { content: "⚠"; font-weight: 800; flex-shrink: 0; }
+    .env-validation-sub { margin-top: 2px; font-size: 10px; font-weight: 400; color: var(--text-3); }
+
+    /* ============================================================
+       RISK ANALYSIS
+       ============================================================ */
+    .ra-top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+
+    .ra-gauge-wrap { position: relative; width: 104px; height: 104px; flex-shrink: 0; }
+    .ra-gauge { display: block; width: 104px; height: 104px; transform: rotate(-90deg); }
+    .ra-gauge-track { fill: none; stroke: #2A3850; stroke-width: 10; }
+    .ra-gauge-arc {
+      fill: none; stroke: var(--emerald); stroke-width: 10; stroke-linecap: round;
+      transition: stroke-dashoffset .8s ease, stroke .3s ease;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+    .ra-gauge-center {
+      position: absolute; inset: 0;
+      display: grid; place-items: center; text-align: center;
+    }
+    .ra-gauge-value { font-size: 23px; font-weight: 800; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+    .ra-gauge-unit  { font-size: 8px; color: var(--text-3); letter-spacing: 1px; margin-top: 3px; font-weight: 700; }
+
+    .ra-head-meta { flex: 1; min-width: 0; }
+    .ra-verdict { font-size: 14px; font-weight: 800; letter-spacing: .3px; line-height: 1.25; }
+    .ra-verdict.safe       { color: var(--emerald-text); }
+    .ra-verdict.suspicious { color: var(--amber-text); }
+    .ra-verdict.phishing   { color: var(--crimson-text); }
+    .ra-verdict.unknown    { color: var(--text-2); }
+    .ra-status-pill {
+      display: inline-block;
+      font-size: 10px; font-weight: 800;
+      letter-spacing: 1px; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 999px;
+      margin-top: 7px;
+      border: 1px solid;
+    }
+    .ra-status-pill.safe       { color: var(--emerald-text); background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.45); }
+    .ra-status-pill.suspicious { color: var(--amber-text);  background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.45); }
+    .ra-status-pill.phishing   { color: var(--crimson-text); background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.5); }
+    .ra-status-pill.unknown    { color: var(--text-2);      background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.4); }
+    .ra-level { font-size: 10px; font-weight: 600; color: var(--text-3); margin-top: 8px; text-transform: uppercase; letter-spacing: .7px; }
+
+    /* Insight callout — the "why" notification box */
+    .ra-callout {
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 11px 12px; margin-bottom: 10px;
+      border-radius: 10px;
+      font-size: 12px; font-weight: 600; line-height: 1.5;
+      border: 1px solid;
+    }
+    .ra-callout::before { font-size: 13px; font-weight: 800; flex-shrink: 0; line-height: 1.4; }
+    .ra-callout.safe       { color: var(--emerald-text); background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.3); }
+    .ra-callout.safe::before       { content: "✓"; }
+    .ra-callout.suspicious { color: var(--amber-text);  background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.3); }
+    .ra-callout.suspicious::before { content: "⚠"; }
+    .ra-callout.phishing   { color: var(--crimson-text); background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.4); }
+    .ra-callout.phishing::before   { content: "✕"; }
+    .ra-callout.unknown    { color: var(--text-2);      background: rgba(148,163,184,.08); border-color: rgba(148,163,184,.3); }
+    .ra-callout.unknown::before    { content: "ℹ"; }
+
+    /* Recommended action row */
+    .ra-recommend {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 9px 12px; margin-bottom: 6px;
+      border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 600; line-height: 1.5;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+    }
+    .ra-recommend::before { font-weight: 800; flex-shrink: 0; }
+    .ra-recommend.safe       { color: var(--emerald-text); } .ra-recommend.safe::before       { content: "→"; }
+    .ra-recommend.suspicious { color: var(--amber-text);  } .ra-recommend.suspicious::before { content: "→"; }
+    .ra-recommend.phishing   { color: var(--crimson-text); } .ra-recommend.phishing::before   { content: "→"; }
+    .ra-recommend.unknown    { color: var(--text-2);      } .ra-recommend.unknown::before    { content: "→"; }
+
+    .ra-reasons { margin-bottom: 4px; }
+    .ra-sub-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      color: var(--text-3); text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .ra-count { color: var(--muted); letter-spacing: 0; }
+
+    .ra-reasons-list, .ra-factor-list, .ra-flow, .ra-redirect { list-style: none; margin: 0; padding: 0; }
+    .ra-reasons-list li {
+      font-size: 11px; color: var(--text-2);
+      padding: 6px 9px; margin-bottom: 5px;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); line-height: 1.45;
+    }
+    .ra-reasons-list li::before { content: "•"; color: var(--indigo); margin-right: 7px; font-weight: 800; }
+
+    .ra-sub { margin-top: 12px; }
+
+    .ra-factor {
+      display: flex; align-items: flex-start; gap: 9px;
+      padding: 8px 10px; margin-bottom: 6px;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+      border-left: 3px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .ra-factor.safe   { border-left-color: var(--emerald); }
+    .ra-factor.warning{ border-left-color: var(--amber); }
+    .ra-factor.danger { border-left-color: var(--crimson); }
+    .ra-factor-icon { font-size: 12px; line-height: 1.4; flex-shrink: 0; }
+    .ra-factor-body { flex: 1; min-width: 0; }
+    .ra-factor-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .ra-factor-status {
+      display: inline-block; font-size: 9px; font-weight: 800;
+      letter-spacing: .5px; padding: 1px 7px; border-radius: 999px;
+      margin-left: 6px; vertical-align: middle;
+    }
+    .ra-factor-status.safe   { background: rgba(16,185,129,.15); color: var(--emerald-text); }
+    .ra-factor-status.warning{ background: rgba(245,158,11,.16); color: var(--amber-text); }
+    .ra-factor-status.danger { background: rgba(239,68,68,.2);  color: var(--crimson-text); }
+    .ra-factor-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+    .ra-factor-imp  { font-size: 9px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+
+    .ra-no-factors {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; margin-top: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px; font-weight: 600; color: var(--emerald-text); line-height: 1.5;
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.3);
+    }
+    .ra-no-factors::before { content: "✓"; font-weight: 800; }
+
+    .ra-flow li { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-2); line-height: 1.4; }
+    .ra-flow-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ra-flow li.safe   .ra-flow-dot { background: var(--emerald); box-shadow: 0 0 8px rgba(16,185,129,.7); }
+    .ra-flow li.warn   .ra-flow-dot { background: var(--amber);  box-shadow: 0 0 8px rgba(245,158,11,.6); }
+    .ra-flow li.danger .ra-flow-dot { background: var(--crimson); box-shadow: 0 0 8px rgba(239,68,68,.7); }
+    .ra-flow-arrow { font-size: 10px; color: var(--muted); padding-left: 17px; margin: 2px 0; }
+    .ra-touch-note {
+      font-size: 10px; color: var(--text-3); margin-top: 8px; line-height: 1.45;
+      border-top: 1px dashed var(--border); padding-top: 8px;
+    }
+
+    .ra-redirect li {
+      font-size: 10px; color: var(--text-3); word-break: break-all; line-height: 1.4;
+      padding: 5px 8px; margin-bottom: 4px;
+      background: rgba(245,158,11,.05); border: 1px solid rgba(245,158,11,.16);
+      border-radius: var(--radius-sm);
+    }
+    .ra-redirect li.ra-final { color: var(--text-2); border-color: rgba(245,158,11,.4); }
+    .ra-redirect-arrow { font-size: 10px; color: var(--muted); padding-left: 17px; margin: 2px 0; }
+    .ra-no-redirect { font-size: 11px; color: var(--emerald-text); font-weight: 700; }
+
+    /* ============================================================
+       SOURCE NODE + STATS
+       ============================================================ */
     .env-matrix {
-      height: 90px; border-radius: 8px; display: grid; place-items: center;
+      height: 80px; border-radius: 10px;
+      display: grid; place-items: center;
       background-image:
         linear-gradient(rgba(16,185,129,.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(16,185,129,.05) 1px, transparent 1px);
-      background-size: 20px 20px; border: 1px solid #26303E;
+      background-size: 18px 18px;
+      border: 1px solid var(--border);
     }
     .env-matrix-circle {
-      width: 56px; height: 56px; border-radius: 50%; background: rgba(16,185,129,.08);
-      border: 1px solid rgba(16,185,129,.5); display: grid; place-items: center;
-      text-align: center; box-shadow: 0 0 14px rgba(16,185,129,.25);
+      width: 52px; height: 52px; border-radius: 50%;
+      display: grid; place-items: center; text-align: center;
+      background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.5);
+      box-shadow: 0 0 16px rgba(16,185,129,.25);
     }
-    .env-matrix-circle span { font-size: 9px; font-weight: 600; color: #10B981; line-height: 1.2; }
+    .env-matrix-circle span { font-size: 9px; font-weight: 800; color: var(--emerald-text); line-height: 1.25; }
     .env-badge-row { text-align: center; margin-top: 10px; }
     .env-badge {
-      display: inline-block; font-size: 11px; font-weight: 600; color: #00FF66;
+      display: inline-block;
+      font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+      color: var(--emerald-text);
       background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.3);
-      padding: 5px 11px; border-radius: 999px;
+      padding: 4px 12px; border-radius: 999px;
     }
 
-    .env-scanurl { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-    .env-url-input {
-      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;
-      background-color: #171E28; color: #e2e8f0; font-size: 13px; outline: none;
+    .env-stats {
+      display: flex; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
     }
-    .env-url-input:focus { border-color: #3b82f6; }
-    .env-url-input::placeholder { color: #64748b; }
-    #envUrlScanBtn { margin-top: 0; }
-
-    .env-qr { margin-bottom: 14px; }
-    .env-qr-drop {
-      border: 1px dashed #334155; border-radius: 10px; padding: 14px;
-      text-align: center; color: #e2e8f0; font-size: 12px; cursor: pointer;
-      background: #171E28;
-    }
-    .env-qr-drop:hover { border-color: #3b82f6; }
-    .env-qr-drop input { display: none; }
-
-    .env-box { background: #171E28; border: 1px solid #232D3B; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
-    .env-box-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #8F9CAE; text-transform: uppercase; margin-bottom: 10px; }
-    .env-results-url { font-size: 11px; color: #8F9CAE; word-break: break-all; margin-bottom: 10px; }
-
-    .env-stats { display: flex; justify-content: space-between; gap: 8px; padding: 12px; background: #171E28; border: 1px solid #232D3B; border-radius: 10px; }
     .env-stat { flex: 1; text-align: center; }
-    .env-stat-value { font-size: 13px; font-weight: 700; color: #FFFFFF; }
-    .env-stat-value.green { color: #10B981; }
-    .env-stat-label { font-size: 9px; color: #8F9CAE; margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
-
-    .env-redirect-warn { font-size: 12px; color: #FBBF24; margin-bottom: 10px; line-height: 1.4; }
-    .env-redirect-toggle {
-      width: 100%; padding: 8px; border-radius: 8px; border: 1px solid rgba(251,191,36,.4);
-      background: rgba(251,191,36,.08); color: #FBBF24; font-size: 12px; font-weight: 600; cursor: pointer;
+    .env-stat-value { font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+    .env-stat-value.green { color: var(--emerald-text); }
+    .env-stat-label {
+      font-size: 9px; font-weight: 600; color: var(--text-3);
+      margin-top: 3px; text-transform: uppercase; letter-spacing: .5px;
     }
-    .env-redirect-toggle:hover { background: rgba(251,191,36,.16); }
+
+    .env-redirect-warn { font-size: 11px; color: var(--amber-text); margin-bottom: 10px; line-height: 1.45; }
+    .env-redirect-toggle {
+      width: 100%; height: 34px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(99,102,241,.4);
+      background: rgba(99,102,241,.08);
+      color: #A5B4FC; font-size: 11px; font-weight: 700; cursor: pointer;
+      transition: background-color .15s ease;
+      font-family: inherit;
+    }
+    .env-redirect-toggle:hover { background: rgba(99,102,241,.16); }
     .env-redirect-list { list-style: none; margin-top: 10px; margin-bottom: 0; }
     .env-redirect-hop {
-      font-size: 11px; color: #E7ECF2; padding: 7px 9px; border-radius: 6px;
-      background: rgba(0,0,0,.25); margin-bottom: 5px; word-break: break-all; line-height: 1.35;
+      font-size: 10px; color: var(--text-2); word-break: break-all; line-height: 1.4;
+      padding: 6px 9px; margin-bottom: 5px;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
     }
-    .env-redirect-hop:last-child { margin-bottom: 0; border: 1px solid rgba(251,191,36,.35); }
+    .env-redirect-hop:last-child { margin-bottom: 0; border-color: rgba(245,158,11,.35); }
+
+    /* ============================================================
+       RECENT SCANS + FOOTER
+       ============================================================ */
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+    .history-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      background: var(--surface-2); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+    }
+    .history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .history-dot.safe    { background: var(--emerald); box-shadow: 0 0 6px rgba(16,185,129,.6); }
+    .history-dot.phishing{ background: var(--crimson); box-shadow: 0 0 6px rgba(239,68,68,.6); }
+    .history-url {
+      font-size: 11px; color: var(--text-2);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .pg-footer {
+      display: flex; justify-content: flex-end; align-items: center;
+      padding-top: 12px; margin-top: 2px;
+      border-top: 1px solid var(--border-soft);
+    }
+    .btn-logout {
+      width: auto; height: 32px; padding: 0 14px;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-2); font-size: 11px; font-weight: 600;
+      border-radius: var(--radius-sm);
+    }
+    .btn-logout:hover { border-color: var(--crimson); color: var(--crimson-text); background: rgba(239,68,68,.06); }
+
+    .divider { display: none; }
+
+    /* ---------- Legacy (hidden) panels — retained for JS hooks ---------- */
+    .tab-panel.hidden, .tab-panel.hidden * { display: none !important; }
   </style>
 </head>
 <body>
 
   <!-- ======== HEADER ======== -->
-  <div class="header">
-    <span class="shield">🛡</span>
-    <h1>PhishGuard</h1>
-    <span class="version">v1.0</span>
+  <header class="pg-header">
+    <div class="pg-brand">
+      <div class="pg-shield">🛡</div>
+      <div>
+        <div class="pg-name">PhishGuard</div>
+        <span class="pg-version">v1.0</span>
+      </div>
+    </div>
+    <div id="userBadge" class="pg-user hidden">
+      <span class="pg-user-label">Logged in as</span>
+      <span id="displayUsername" class="pg-user-name">—</span>
+      <span class="pg-user-dot" title="Active"></span>
+    </div>
+  </header>
+
+  <!-- ======== LOGIN ======== -->
+  <div id="loginSection">
+    <div class="auth-card">
+      <div class="auth-head">
+        <div class="auth-icon">🛡️</div>
+        <h2>Welcome back</h2>
+        <p>Sign in to scan URLs and protect your identity.</p>
+      </div>
+      <div class="input-group">
+        <label for="usernameInput">Username</label>
+        <input type="text" id="usernameInput" placeholder="Enter username" autocomplete="off" />
+      </div>
+      <div class="input-group">
+        <label for="passwordInput">Password</label>
+        <input type="password" id="passwordInput" placeholder="Enter password" />
+      </div>
+      <p id="loginError" class="error-text">Invalid credentials</p>
+      <button id="loginBtn" class="btn btn-primary">Sign In</button>
+      <p class="link-text">
+        Don't have an account? <a id="showRegisterLink">Register</a>
+      </p>
+    </div>
   </div>
 
-  <!-- ======== LOGIN FORM ======== -->
-  <div id="loginSection" class="login-section">
-    <h2>Sign In</h2>
-    <div class="input-group">
-      <label for="usernameInput">Username</label>
-      <input type="text" id="usernameInput" placeholder="Enter username" autocomplete="off" />
+  <!-- ======== REGISTER ======== -->
+  <div id="registerSection" class="hidden">
+    <div class="auth-card">
+      <div class="auth-head">
+        <div class="auth-icon">🔐</div>
+        <h2>Create your account</h2>
+        <p>Start scanning for phishing threats in seconds.</p>
+      </div>
+      <div class="input-group">
+        <label for="regUsernameInput">Username</label>
+        <input type="text" id="regUsernameInput" placeholder="Choose a username" autocomplete="off" />
+      </div>
+      <div class="input-group">
+        <label for="regEmailInput">Email</label>
+        <input type="email" id="regEmailInput" placeholder="you@example.com" />
+      </div>
+      <div class="input-group">
+        <label for="regPasswordInput">Password</label>
+        <input type="password" id="regPasswordInput" placeholder="Min 8 characters" />
+      </div>
+      <p id="registerError" class="error-text">Registration failed</p>
+      <button id="registerBtn" class="btn btn-primary">Create Account</button>
+      <p class="link-text">
+        Already have an account? <a id="showLoginLink">Sign In</a>
+      </p>
     </div>
-    <div class="input-group">
-      <label for="passwordInput">Password</label>
-      <input type="password" id="passwordInput" placeholder="Enter password" />
-    </div>
-    <p id="loginError" class="error-text">Invalid credentials</p>
-    <button id="loginBtn" class="btn btn-primary">Sign In</button>
-    <p class="link-text">
-      Don't have an account? <a id="showRegisterLink">Register</a>
-    </p>
   </div>
 
-  <!-- ======== REGISTER FORM ======== -->
-  <div id="registerSection" class="login-section hidden">
-    <h2>Create Account</h2>
-    <div class="input-group">
-      <label for="regUsernameInput">Username</label>
-      <input type="text" id="regUsernameInput" placeholder="Choose a username" autocomplete="off" />
-    </div>
-    <div class="input-group">
-      <label for="regEmailInput">Email</label>
-      <input type="email" id="regEmailInput" placeholder="you@example.com" />
-    </div>
-    <div class="input-group">
-      <label for="regPasswordInput">Password</label>
-      <input type="password" id="regPasswordInput" placeholder="Min 8 characters" />
-    </div>
-    <p id="registerError" class="error-text">Registration failed</p>
-    <button id="registerBtn" class="btn btn-primary">Create Account</button>
-    <p class="link-text">
-      Already have an account? <a id="showLoginLink">Sign In</a>
-    </p>
-  </div>
+  <!-- ======== DASHBOARD ======== -->
+  <div id="dashboardSection" class="hidden">
 
-  <!-- ======== DASHBOARD (Post-Login) ======== -->
-  <div id="dashboardSection" class="dashboard hidden">
-    <div class="user-info">
-      Logged in as <strong id="displayUsername"></strong>
-    </div>
-
-    <!-- ===== URL SCAN PANEL (kept hidden — scanning handled in Env Sandbox) ===== -->
+    <!-- Legacy hidden panels (kept for JS hooks, never shown) -->
     <div id="urlScanPanel" class="tab-panel hidden">
       <button id="scanNowBtn" class="btn btn-scan">Scan Current Page (Deep)</button>
       <div id="scanLoading" class="spinner hidden"></div>
-
-      <!-- Scan result card -->
       <div id="scanResultContainer" class="scan-result hidden">
         <div id="statusCard" class="status-card unknown">
           <div id="statusIcon" class="status-icon">❓</div>
           <div id="statusText" class="status-text">Scanning...</div>
-          <div class="confidence-bar">
-            <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
-          </div>
+          <div class="confidence-bar"><div id="confidenceFill" class="confidence-fill" style="width:0%"></div></div>
           <div id="scannedUrl" class="scanned-url"></div>
-
-          <!-- Risk Score Meter -->
           <div id="riskMeter" class="risk-meter hidden">
-            <div class="risk-label-row">
-              <span>Risk Score</span>
-              <span id="riskValue" class="risk-value">0</span>
-            </div>
-            <div class="risk-bar">
-              <div id="riskMarker" class="risk-marker" style="left: 0%"></div>
-            </div>
+            <div class="risk-label-row"><span>Risk Score</span><span id="riskValue" class="risk-value">0</span></div>
+            <div class="risk-bar"><div id="riskMarker" class="risk-marker" style="left:0%"></div></div>
           </div>
-
-          <!-- Brand similarity warning -->
-          <div id="brandSection" class="why-section hidden">
-            <h4>Brand Check</h4>
-            <div id="brandText" style="font-size:13px;color:#fbbf24;font-weight:600;"></div>
-          </div>
-
-          <!-- Visual brand similarity -->
+          <div id="brandSection" class="why-section hidden"><h4>Brand Check</h4><div id="brandText" style="font-size:13px;color:#fbbf24;font-weight:600;"></div></div>
           <div id="visualBrandSection" class="why-section hidden">
             <h4>Visual Brand Similarity</h4>
             <div id="visualBrandText" style="font-size:13px;color:#fbbf24;font-weight:600;"></div>
@@ -710,29 +637,13 @@
               <div id="visualBrandMeta" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
             </div>
           </div>
-
-          <!-- Why / Explanation -->
-          <div id="whySection" class="why-section">
-            <h4>Why this result?</h4>
-            <ul id="whyList" class="why-list"></ul>
-          </div>
-
-          <!-- Sandbox details -->
-          <div id="sandboxSection" class="sandbox-section">
-            <h4>Page Content Analysis (Sandbox)</h4>
-            <div id="sandboxGrid" class="sandbox-grid"></div>
-          </div>
-
-          <!-- Redirect chain -->
-          <div id="redirectSection" class="why-section hidden">
-            <h4>Redirect Chain</h4>
-            <ul id="redirectList" class="why-list"></ul>
-          </div>
+          <div id="whySection" class="why-section"><h4>Why this result?</h4><ul id="whyList" class="why-list"></ul></div>
+          <div id="sandboxSection" class="sandbox-section"><h4>Page Content Analysis (Sandbox)</h4><div id="sandboxGrid" class="sandbox-grid"></div></div>
+          <div id="redirectSection" class="why-section hidden"><h4>Redirect Chain</h4><ul id="redirectList" class="why-list"></ul></div>
         </div>
       </div>
     </div>
 
-    <!-- ===== QR SCAN PANEL ===== -->
     <div id="qrScanPanel" class="tab-panel hidden">
       <div id="qrDropzone" class="qr-dropzone">
         <div>📷 Click to upload a QR code image</div>
@@ -747,40 +658,92 @@
       <div id="qrResults"></div>
     </div>
 
-    <!-- ===== ENVIRONMENT SANDBOX PANEL (default view) ===== -->
+    <!-- ===== MAIN: TARGET URL ENVIRONMENT ===== -->
     <div id="envScanPanel" class="tab-panel">
-      <!-- Header Row -->
-      <div class="env-header">
-        <div class="env-brand">
-          <div class="env-shield">🛡️</div>
-          <div>
-            <div class="env-title">Target URL Environment</div>
-            <div class="env-subtitle">Phishing Sandbox · Live Probe</div>
-          </div>
-        </div>
-      </div>
+      <div class="env-section-title">Target URL Environment</div>
 
-      <!-- Scan URL input -->
+      <!-- URL input + scan -->
       <div class="env-scanurl">
-        <input type="text" id="envUrlInput" placeholder="Enter a URL to scan (https://...)" class="env-url-input" spellcheck="false" />
+        <input type="text" id="envUrlInput" placeholder="Enter URL to scan (https://...)" class="env-url-input" spellcheck="false" />
         <button id="envUrlScanBtn" class="btn btn-scan">Scan URL</button>
         <div id="envUrlLoading" class="spinner hidden"></div>
       </div>
 
-      <!-- Scan QR upload -->
+      <!-- Secondary: QR upload -->
       <div class="env-qr">
         <div id="envQrDropzone" class="env-qr-drop">
-          <div>📷 Scan a QR Code</div>
-          <div style="font-size:10px; margin-top:4px; color:#64748b;">Upload an image and we check the embedded URL.</div>
+          <div class="qr-title">📷 Scan QR Code (Upload Image)</div>
+          <div class="qr-hint">We decode it and check the embedded URL for phishing (quishing).</div>
           <input type="file" id="envQrFileInput" accept="image/*" />
         </div>
         <div id="envQrLoading" class="spinner hidden"></div>
         <p id="envQrError" class="error-text">QR scan failed</p>
       </div>
 
-      <!-- Results (shown after a scan) -->
+      <!-- DNS validation status -->
+      <div id="envValidation" class="env-validation hidden"></div>
+
+      <!-- ===== RESULTS ===== -->
       <div id="envResults" class="hidden">
         <div class="env-results-url" id="envResUrl"></div>
+
+        <!-- Risk Analysis -->
+        <div id="envRiskAnalysis" class="env-box">
+          <div class="env-box-label">Risk Analysis</div>
+
+          <div class="ra-top">
+            <div class="ra-gauge-wrap">
+              <svg class="ra-gauge" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ra-gauge-track" cx="60" cy="60" r="52"></circle>
+                <circle id="raGaugeArc" class="ra-gauge-arc" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <div class="ra-gauge-center">
+                <div id="raGaugeValue" class="ra-gauge-value">0</div>
+                <div class="ra-gauge-unit">RISK / 100</div>
+              </div>
+            </div>
+            <div class="ra-head-meta">
+              <div id="raVerdict" class="ra-verdict unknown">❓ Unable to Determine</div>
+              <span id="raStatusPill" class="ra-status-pill unknown">UNKNOWN</span>
+              <div id="raRiskLevel" class="ra-level">Unknown risk</div>
+            </div>
+          </div>
+
+          <!-- Insight callout (headline reason) -->
+          <div id="raInsight" class="ra-callout"></div>
+          <div id="raRecommendation" class="ra-recommend"></div>
+
+          <div id="raReasons" class="ra-reasons">
+            <div class="ra-sub-title">Why this result?</div>
+            <ul id="raReasonsList" class="ra-reasons-list"></ul>
+          </div>
+
+          <div class="ra-sub" id="raFactorsBlock">
+            <div class="ra-sub-title">
+              <span id="raFactorTitle">Risk Factors</span>
+              <span id="raFactorCount" class="ra-count"></span>
+            </div>
+            <ul id="raFactorList" class="ra-factor-list"></ul>
+          </div>
+          <div id="raNoFactors" class="ra-no-factors hidden">
+            No risk factors detected — this URL shows no signs of phishing.
+          </div>
+
+          <div class="ra-sub">
+            <div class="ra-sub-title">What happens if I touch this URL?</div>
+            <ol id="raTouchFlow" class="ra-flow"></ol>
+            <div class="ra-touch-note">
+              Educational simulation only — PhishGuard never opens, visits, or
+              interacts with the scanned URL. Redirects are shown for information only.
+            </div>
+          </div>
+
+          <div class="ra-sub">
+            <div class="ra-sub-title">Redirect Visualization</div>
+            <div id="raNoRedirect" class="ra-no-redirect"></div>
+            <ul id="raRedirectFlow" class="ra-redirect"></ul>
+          </div>
+        </div>
 
         <!-- Source Node -->
         <div class="env-box">
@@ -793,7 +756,7 @@
           </div>
         </div>
 
-        <!-- Statistics Summary -->
+        <!-- Stats -->
         <div class="env-stats">
           <div class="env-stat">
             <div class="env-stat-value" id="envChecks">0 Probes</div>
@@ -809,25 +772,26 @@
           </div>
         </div>
 
-        <!-- Redirection (only shown when the URL forwards through redirects) -->
-        <div id="envRedirectSection" class="env-box hidden" style="border-color:#7c5b00;">
+        <!-- Redirect info -->
+        <div id="envRedirectSection" class="env-box hidden">
           <div class="env-box-label">Redirection</div>
           <div class="env-redirect-warn" id="envRedirectWarn"></div>
           <button id="envRedirectToggle" class="env-redirect-toggle">View Redirect Chain</button>
           <ul id="envRedirectList" class="env-redirect-list hidden"></ul>
         </div>
       </div>
+
+      <!-- Recent Scans -->
+      <div class="env-box">
+        <div class="env-box-label">Recent Scans</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="pg-footer">
+        <button id="logoutBtn" class="btn-logout">Sign Out</button>
+      </footer>
     </div>
-
-    <hr class="divider" />
-
-    <!-- Recent History -->
-    <div class="history-section">
-      <h3>Recent Scans</h3>
-      <div id="historyList"></div>
-    </div>
-
-    <button id="logoutBtn" class="btn btn-logout">Sign Out</button>
   </div>
 
   <!-- ======== POPUP SCRIPT ======== -->
