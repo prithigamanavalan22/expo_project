@@ -1,600 +1,2037 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Target URL Environment Sandbox Dashboard</title>
-<style>
-  /* ============================================================
-     PhishGuard — Target URL Environment Sandbox Dashboard
-     Premium dark-mode component. Clean flexbox/grid layout,
-     rounded corners, neon status indicators. Embeddable in
-     Flask (static) or React (copy markup + CSS).
-     ============================================================ */
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhishGuard — Threat Intelligence & Sandbox Dashboard</title>
+  <style>
+    /* ============================================================
+       PhishGuard — Enterprise Threat Intelligence & Sandbox Dashboard
+       Design System: Obsidian Cyber HUD
+       Modern cybersecurity SOC aesthetic with high contrast dark mode,
+       glassmorphic card surfaces, luminous telemetry accents, and
+       responsive grid layouts.
+       ============================================================ */
 
-  :root {
-    --bg: #0F1319;
-    --panel: #171E28;
-    --border: #232D3B;
-    --border-soft: #1E2834;
-    --text: #FFFFFF;
-    --muted: #8F9CAE;
-    --neon: #10B981;      /* safe / neon green */
-    --neon-bright: #00FF66;
-    --danger: #EF4444;    /* flagged risk */
-    --blue: #3B82F6;      /* active preset / slider */
-    --blue-glass: rgba(59, 130, 246, 0.10);
-    --radius: 10px;
-    --radius-sm: 8px;
-    font-size: 14px;
-  }
+    :root {
+      --bg: #07090E;
+      --bg-alt: #0C1017;
+      --panel: #111722;
+      --panel-hover: #161F2E;
+      --panel-raised: #182232;
+      --border: #1E293B;
+      --border-subtle: #17202E;
+      --border-glow: rgba(99, 102, 241, 0.25);
+      
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-sub: #64748B;
+      
+      --emerald: #10B981;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+      --emerald-subtle: rgba(16, 185, 129, 0.1);
+      
+      --crimson: #EF4444;
+      --crimson-glow: rgba(239, 68, 68, 0.3);
+      --crimson-subtle: rgba(239, 68, 68, 0.12);
+      
+      --amber: #F59E0B;
+      --amber-glow: rgba(245, 158, 11, 0.25);
+      --amber-subtle: rgba(245, 158, 11, 0.1);
+      
+      --cyan: #06B6D4;
+      --cyan-glow: rgba(6, 182, 212, 0.25);
+      --indigo: #6366F1;
+      --indigo-glow: rgba(99, 102, 241, 0.25);
+      --blue: #3B82F6;
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+      --radius-sm: 8px;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+      --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.15);
+    }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  .pg-dash {
-    width: 100%;
-    max-width: 1180px;
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 14px;
-    padding: 28px;
-    -webkit-font-smoothing: antialiased;
-  }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
 
-  /* ---------- 1. Header Row ---------- */
-  .pg-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 26px;
-  }
+    /* Container */
+    .soc-wrapper {
+      width: 100%;
+      max-width: 1240px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
 
-  .pg-header-brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
+    /* Top Command Header */
+    .soc-header {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
 
-  .pg-shield {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, var(--blue-glass), rgba(16,185,129,.08));
-    border: 1px solid var(--border);
-    display: grid;
-    place-items: center;
-    color: var(--neon);
-    flex-shrink: 0;
-  }
+    .soc-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--indigo), var(--cyan), var(--emerald));
+    }
 
-  .pg-shield svg { width: 24px; height: 24px; }
+    .soc-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-  .pg-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    color: var(--text);
-  }
+    .soc-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.2);
+    }
 
-  .pg-subtitle {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-top: 3px;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-  }
+    .soc-logo svg {
+      width: 24px;
+      height: 24px;
+    }
 
-  .pg-url-field {
-    font-family: inherit;
-    font-size: 0.85rem;
-    color: var(--muted);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 11px 16px;
-    min-width: 320px;
-    letter-spacing: 0.2px;
-    outline: none;
-    text-align: right;
-  }
-  .pg-url-field::placeholder { color: var(--muted); opacity: 0.9; }
+    .soc-brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-  /* ---------- 2. Metrics Core Panel ---------- */
-  .pg-core {
-    display: grid;
-    grid-template-columns: 1fr 1.1fr 1fr;
-    gap: 18px;
-  }
+    .soc-badge-version {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #A5B4FC;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
 
-  .pg-box {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    min-height: 200px;
-  }
+    .soc-brand-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
 
-  .pg-box-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 14px;
-  }
+    /* Telemetry Pill Group */
+    .soc-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
-  /* --- Box 1: Source Node (glow grid + Client Matrix) --- */
-  .pg-matrix {
-    position: relative;
-    height: 128px;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background-image:
-      linear-gradient(rgba(16,185,129,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(16,185,129,.05) 1px, transparent 1px);
-    background-size: 24px 24px;
-    border: 1px solid var(--border-soft);
-    display: grid;
-    place-items: center;
-  }
+    .telemetry-node {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
 
-  .pg-matrix-circle {
-    width: 74px;
-    height: 74px;
-    border-radius: 50%;
-    background: rgba(16,185,129,.08);
-    border: 1px solid rgba(16,185,129,.5);
-    display: grid;
-    place-items: center;
-    text-align: center;
-    box-shadow: 0 0 24px rgba(16,185,129,.25);
-  }
-  .pg-matrix-circle span {
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--neon);
-    letter-spacing: 0.4px;
-    line-height: 1.2;
-  }
+    .telemetry-node .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulse 2s infinite ease-in-out;
+    }
 
-  .pg-status-badge {
-    display: inline-block;
-    margin-top: 16px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--neon-bright);
-    background: rgba(16,185,129,.08);
-    border: 1px solid rgba(16,185,129,.3);
-    padding: 7px 14px;
-    border-radius: 999px;
-  }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
 
-  /* --- Box 2: Detection Core probes --- */
-  .pg-probes { list-style: none; }
-  .pg-probes li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.88rem;
-    color: var(--text);
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border-soft);
-    font-variant-numeric: tabular-nums;
-  }
-  .pg-probes li:last-child { border-bottom: none; }
-  .pg-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--neon);
-    box-shadow: 0 0 8px rgba(16,185,129,.8);
-    flex-shrink: 0;
-  }
+    /* Control & Search Bar */
+    .soc-target-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
 
-  /* --- Box 3: Threat Level (radial semi-arc gauge) --- */
-  .pg-gauge-wrap { position: relative; height: 128px; }
+    .target-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
-  .pg-gauge svg { display: block; width: 100%; height: 128px; }
+    .target-input-wrap {
+      flex: 1;
+      min-width: 280px;
+      position: relative;
+    }
 
-  .pg-gauge-center {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 8px;
-    text-align: center;
-  }
-  .pg-gauge-pct {
-    font-size: 1.35rem;
-    font-weight: 800;
-    color: var(--text);
-  }
+    .target-input-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 17px;
+      height: 17px;
+      color: var(--text-sub);
+    }
 
-  .pg-gauge-under {
-    text-align: center;
-    margin-top: 14px;
-    font-size: 0.72rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
+    .target-input {
+      width: 100%;
+      height: 44px;
+      padding: 0 16px 0 42px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
 
-  /* ---------- 3. Statistics Summary Row ---------- */
-  .pg-stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 14px;
-    margin: 26px 0;
-    padding: 18px 20px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    flex-wrap: wrap;
-  }
-  .pg-stat { flex: 1; min-width: 120px; }
-  .pg-stat-value {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .pg-stat-value.green { color: var(--neon); }
-  .pg-stat-label {
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin-top: 4px;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-  }
+    .target-input:focus {
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
 
-  /* ---------- 4. Environment Profile Presets ---------- */
-  .pg-presets { margin-bottom: 26px; }
-  .pg-presets-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
-  .pg-pills {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .pg-pill {
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--muted);
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all .18s ease;
-  }
-  .pg-pill:hover { border-color: var(--blue); color: var(--text); }
-  .pg-pill.active {
-    background: var(--blue);
-    border-color: var(--blue);
-    color: #FFFFFF;
-    box-shadow: 0 4px 16px rgba(59,130,246,.35);
-  }
+    .btn-action {
+      height: 44px;
+      padding: 0 22px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.18s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
 
-  /* ---------- 5. Detailed Technical Probe Controls ---------- */
-  .pg-tech {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px;
-  }
-  .pg-tech-item { display: flex; flex-direction: column; gap: 12px; }
-  .pg-tech-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .btn-primary {
+      background: linear-gradient(135deg, #4F46E5, #6366F1);
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
 
-  .pg-toggle-row { display: flex; gap: 10px; }
-  .pg-toggle {
-    font-family: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: default;
-  }
-  .pg-toggle.on {
-    background: var(--neon);
-    border-color: var(--neon);
-    color: #03130A;
-    box-shadow: 0 0 14px rgba(16,185,129,.35);
-  }
-  .pg-toggle.off { opacity: 0.45; }
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
 
-  /* Sliders */
-  .pg-slider-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .pg-slider {
-    position: relative;
-    flex: 1;
-    height: 6px;
-    background: var(--border);
-    border-radius: 999px;
-  }
-  .pg-slider-fill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: var(--fill, 65%);
-    background: linear-gradient(90deg, #2563EB, var(--blue));
-    border-radius: 999px;
-  }
-  .pg-slider-thumb {
-    position: absolute;
-    top: 50%;
-    left: var(--fill, 65%);
-    width: 16px;
-    height: 16px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: #FFFFFF;
-    border: 3px solid var(--blue);
-    box-shadow: 0 0 12px rgba(59,130,246,.6);
-  }
-  .pg-slider-value {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--text);
-    min-width: 62px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
+    .btn-primary:active {
+      transform: translateY(0);
+    }
 
-  /* responsive */
-  @media (max-width: 900px) {
-    .pg-core { grid-template-columns: 1fr; }
-    .pg-header { flex-direction: column; align-items: flex-start; }
-    .pg-url-field { width: 100%; min-width: 0; text-align: left; }
-    .pg-stats { flex-direction: column; align-items: flex-start; }
-    .pg-stat { width: 100%; }
-  }
-</style>
+    /* Attack Presets */
+    .presets-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .presets-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-sub);
+    }
+
+    .preset-pill {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 13px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .preset-pill:hover {
+      border-color: var(--indigo);
+      color: var(--text);
+      background: var(--panel-hover);
+    }
+
+    .preset-pill.active {
+      background: rgba(99, 102, 241, 0.16);
+      border-color: var(--indigo);
+      color: #FFFFFF;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .preset-pill .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .pill-dot.danger { background: var(--crimson); box-shadow: 0 0 6px var(--crimson); }
+    .pill-dot.warn   { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .pill-dot.safe   { background: var(--emerald); box-shadow: 0 0 6px var(--emerald); }
+
+    /* Core Tri-Panel Layout */
+    .soc-core-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 18px;
+    }
+
+    .soc-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .soc-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .soc-card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .soc-card-title svg {
+      width: 15px;
+      height: 15px;
+      color: var(--cyan);
+    }
+
+    /* Card 1: Target Node & Identity */
+    .node-radar-wrap {
+      height: 128px;
+      border-radius: var(--radius);
+      background: radial-gradient(circle at center, rgba(6, 182, 212, 0.08) 0%, transparent 70%),
+                  linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .node-pulse-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 1px dashed rgba(6, 182, 212, 0.5);
+      display: grid;
+      place-items: center;
+      animation: spinSlow 20s linear infinite;
+    }
+
+    @keyframes spinSlow {
+      to { transform: rotate(360deg); }
+    }
+
+    .node-icon-core {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid var(--cyan);
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.3);
+    }
+
+    .node-verdict-banner {
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.4px;
+      margin-bottom: 14px;
+      border: 1px solid;
+    }
+
+    .node-verdict-banner.danger {
+      background: var(--crimson-subtle);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #FCA5A5;
+    }
+
+    .node-verdict-banner.warn {
+      background: var(--amber-subtle);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #FCD34D;
+    }
+
+    .node-verdict-banner.safe {
+      background: var(--emerald-subtle);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #6EE7B7;
+    }
+
+    .node-kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .node-kv {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .node-kv:last-child {
+      border-bottom: none;
+    }
+
+    .node-kv .k {
+      color: var(--text-sub);
+    }
+
+    .node-kv .v {
+      color: var(--text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Card 2: Live Detection Probes */
+    .probes-stream {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .probe-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      background: var(--panel-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+
+    .probe-item:hover {
+      border-color: var(--border);
+      background: var(--panel-hover);
+    }
+
+    .probe-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .probe-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .probe-dot.clean {
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+    }
+
+    .probe-dot.flagged {
+      background: var(--crimson);
+      box-shadow: 0 0 8px var(--crimson);
+    }
+
+    .probe-dot.warn {
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+    }
+
+    .probe-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .probe-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .probe-tag.clean {
+      background: rgba(16, 185, 129, 0.12);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .probe-tag.flagged {
+      background: rgba(239, 68, 68, 0.15);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .probe-tag.warn {
+      background: rgba(245, 158, 11, 0.12);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Card 3: Threat Score Gauge */
+    .gauge-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-top: 4px;
+    }
+
+    .gauge-svg-wrap {
+      width: 220px;
+      height: 130px;
+      position: relative;
+    }
+
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .gauge-center-readout {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gauge-score-value {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gauge-score-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .threat-level-tag {
+      margin-top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border: 1px solid;
+    }
+
+    .threat-level-tag.danger {
+      background: var(--crimson-subtle);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #FCA5A5;
+      box-shadow: 0 0 14px rgba(239, 68, 68, 0.2);
+    }
+
+    .threat-level-tag.warn {
+      background: var(--amber-subtle);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #FCD34D;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.2);
+    }
+
+    .threat-level-tag.safe {
+      background: var(--emerald-subtle);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #6EE7B7;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+    }
+
+    .mitre-pill-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .mitre-pill {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Summary Bar */
+    .soc-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .stat-tile {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-tile-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-sub);
+    }
+
+    .stat-tile-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-tile-value.green { color: var(--emerald); }
+    .stat-tile-value.red   { color: var(--crimson); }
+    .stat-tile-value.cyan  { color: var(--cyan); }
+
+    /* Forensic Deep-Dive Tabs Section */
+    .soc-forensics {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .forensics-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .forensics-title-group h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .forensics-title-group p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* Tab Navigation */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--indigo);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--indigo);
+      border-color: var(--indigo);
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+
+    /* Tab Panels */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tab 1: Lexical Grid */
+    .lexical-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .lexical-box {
+      background: var(--panel-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .lexical-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    .lexical-metric {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lexical-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .lexical-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--indigo);
+      transition: width 0.5s ease;
+    }
+
+    .lexical-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* Tab 2: DNS & Network */
+    .dns-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .dns-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg-alt);
+      color: var(--text-sub);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dns-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text);
+    }
+
+    .dns-table tr:hover td {
+      background: var(--panel-hover);
+    }
+
+    /* Tab 3: Brand Match */
+    .brand-match-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--panel-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 20px;
+      flex-wrap: wrap;
+    }
+
+    .brand-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 28px;
+    }
+
+    .brand-details {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .brand-details h4 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .brand-details p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .brand-sim-meter {
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .brand-sim-pct {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--crimson);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Tab 4: Sandbox & Anti-Bot Controls */
+    .sandbox-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .sandbox-control-tile {
+      background: var(--panel-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .control-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toggle-switch-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-alt);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .toggle-btn.active {
+      background: var(--emerald);
+      border-color: var(--emerald);
+      color: #03140C;
+      box-shadow: 0 0 12px var(--emerald-glow);
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .slider-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      position: relative;
+    }
+
+    .slider-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: var(--blue);
+      border-radius: 999px;
+    }
+
+    .slider-thumb {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 3px solid var(--blue);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    }
+
+    .slider-value {
+      font-size: 0.88rem;
+      font-weight: 800;
+      min-width: 65px;
+      text-align: right;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Tab 5: Redirect Tracer */
+    .redirect-flow-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .redirect-flow-timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .redirect-hop-node {
+      position: relative;
+      background: var(--panel-raised);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .redirect-hop-node::before {
+      content: '';
+      position: absolute;
+      left: -17px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--indigo);
+      border: 2px solid var(--bg);
+    }
+
+    .hop-url {
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .hop-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .hop-badge.redirect {
+      background: rgba(245, 158, 11, 0.15);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
+    .hop-badge.final-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .hop-badge.final-safe {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    /* Recent Incident Log Table */
+    .soc-incidents {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .incidents-table-wrap {
+      overflow-x: auto;
+      margin-top: 14px;
+    }
+
+    .incidents-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .incidents-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg-alt);
+      color: var(--text-sub);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .incidents-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      vertical-align: middle;
+    }
+
+    .incidents-table tr:hover td {
+      background: var(--panel-hover);
+      color: var(--text);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .status-pill.phish {
+      background: var(--crimson-subtle);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .status-pill.safe {
+      background: var(--emerald-subtle);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .status-pill.warn {
+      background: var(--amber-subtle);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    /* Footer */
+    .soc-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 6px;
+      color: var(--text-sub);
+      font-size: 0.75rem;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .soc-footer a {
+      color: var(--indigo);
+      text-decoration: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .soc-core-grid {
+        grid-template-columns: 1fr;
+      }
+      .soc-stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .soc-stats-bar {
+        grid-template-columns: 1fr;
+      }
+      .soc-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .target-input-row {
+        flex-direction: column;
+      }
+      .btn-action {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="pg-dash" id="pgDashboard">
 
-    <!-- 1. Header Row -->
-    <header class="pg-header">
-      <div class="pg-header-brand">
-        <div class="pg-shield" aria-hidden="true">
-          <!-- shield icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M12 3l7 2.5v5.2c0 4.6-3 8.2-7 10.3-4-2.1-7-5.7-7-10.3V5.5L12 3z"/>
-            <path d="M9 12l2 2 4-4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <div class="soc-wrapper">
+
+    <!-- 1. Header Command Bar -->
+    <header class="soc-header">
+      <div class="soc-brand">
+        <div class="soc-logo">
+          <!-- Shield Icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4"/>
           </svg>
         </div>
         <div>
-          <div class="pg-title">Target URL Environment</div>
-          <div class="pg-subtitle">Phishing Sandbox · Live Probe</div>
+          <div class="soc-brand-title">
+            PhishGuard Threat Intelligence
+            <span class="soc-badge-version">v2.4 SOC Suite</span>
+          </div>
+          <div class="soc-brand-subtitle">Automated AI Forensic Engine · Execution Sandbox · Brand Heuristics</div>
         </div>
       </div>
-      <input
-        class="pg-url-field"
-        type="text"
-        readonly
-        value="https://trusted-user-login-verification.com"
-        spellcheck="false" />
+
+      <div class="soc-telemetry">
+        <div class="telemetry-node">
+          <span class="pulse-dot"></span>
+          <span>FastAPI Engine: <strong>Port 8000</strong></span>
+        </div>
+        <div class="telemetry-node">
+          <span style="color: var(--indigo); font-weight: bold;">[ML]</span>
+          <span>Model: <strong>RandomForest + XGB</strong></span>
+        </div>
+        <div class="telemetry-node">
+          <span style="color: var(--cyan); font-weight: bold;">[DB]</span>
+          <span>PhishTank: <strong>Synced</strong></span>
+        </div>
+      </div>
     </header>
 
-    <!-- 2. Metrics Core Panel -->
-    <section class="pg-core">
-
-      <!-- Box 1: Source Node -->
-      <div class="pg-box">
-        <div class="pg-box-label">Source Node</div>
-        <div class="pg-matrix">
-          <div class="pg-matrix-circle"><span>CLIENT<br/>MATRIX</span></div>
+    <!-- 2. Target URL Input & Scan Controller -->
+    <section class="soc-target-bar">
+      <div class="target-input-row">
+        <div class="target-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            id="socUrlInput"
+            class="target-input"
+            type="text"
+            value="https://paypal-security-verification-portal.com/login"
+            placeholder="Enter target URL for deep sandbox inspection (e.g. https://...)"
+            spellcheck="false"
+          />
         </div>
-        <div style="text-align:center;">
-          <span class="pg-status-badge">Status Verdict: Standard Consumer</span>
+        <button id="btnRunScan" class="btn-action btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          Run Deep Forensic Scan
+        </button>
+      </div>
+
+      <!-- Attack Presets -->
+      <div class="presets-row">
+        <span class="presets-label">Simulate Target Profile:</span>
+        <button class="preset-pill active" data-scenario="paypal">
+          <span class="pill-dot danger"></span>
+          PayPal Impersonation Phish
+        </button>
+        <button class="preset-pill" data-scenario="apple">
+          <span class="pill-dot danger"></span>
+          Apple ID Credential Harvester
+        </button>
+        <button class="preset-pill" data-scenario="suspicious">
+          <span class="pill-dot warn"></span>
+          Obfuscated IP & High Jitter
+        </button>
+        <button class="preset-pill" data-scenario="google">
+          <span class="pill-dot safe"></span>
+          Google Accounts (Safe)
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. Tri-Panel Telemetry Grid -->
+    <main class="soc-core-grid">
+
+      <!-- Panel 1: Target Node & Identity -->
+      <div class="soc-card">
+        <div class="soc-card-header">
+          <div class="soc-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+            Target Identity
+          </div>
+          <span id="nodeDomainTag" style="font-size:0.72rem; color:var(--text-sub);">paypal-security-verification-portal.com</span>
+        </div>
+
+        <div class="node-radar-wrap">
+          <div class="node-pulse-circle">
+            <div class="node-icon-core">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div id="nodeVerdictBanner" class="node-verdict-banner danger">
+          🚨 Malicious Target: Brand Impersonation Flagged
+        </div>
+
+        <div class="node-kv-list">
+          <div class="node-kv">
+            <span class="k">Host IP Address</span>
+            <span id="nodeIp" class="v">185.193.125.77</span>
+          </div>
+          <div class="node-kv">
+            <span class="k">Registrar / ASN</span>
+            <span id="nodeAsn" class="v">NameCheap / AS202685</span>
+          </div>
+          <div class="node-kv">
+            <span class="k">Domain Age</span>
+            <span id="nodeAge" class="v">3 Days (Freshly Registered)</span>
+          </div>
+          <div class="node-kv">
+            <span class="k">SSL Certificate</span>
+            <span id="nodeSsl" class="v">Let's Encrypt (DV Validated)</span>
+          </div>
         </div>
       </div>
 
-      <!-- Box 2: Detection Core -->
-      <div class="pg-box">
-        <div class="pg-box-label">Detection Core</div>
-        <ul class="pg-probes">
-          <li><span class="pg-dot"></span>navigator.webdriver</li>
-          <li><span class="pg-dot"></span>hardwareConcurrency</li>
-          <li><span class="pg-dot"></span>High-Resolution Jitter</li>
-          <li><span class="pg-dot"></span>Domain Reputation</li>
+      <!-- Panel 2: Live Detection Probes -->
+      <div class="soc-card">
+        <div class="soc-card-header">
+          <div class="soc-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Active Detection Matrix
+          </div>
+          <span style="font-size:0.72rem; color:var(--cyan); font-weight:700;">5/5 Probes Active</span>
+        </div>
+
+        <ul class="probes-stream">
+          <li class="probe-item">
+            <div class="probe-meta">
+              <span id="probeDot1" class="probe-dot flagged"></span>
+              <span class="probe-name">AI Lexical & Entropy Analysis</span>
+            </div>
+            <span id="probeTag1" class="probe-tag flagged">High Entropy (4.62)</span>
+          </li>
+          <li class="probe-item">
+            <div class="probe-meta">
+              <span id="probeDot2" class="probe-dot flagged"></span>
+              <span class="probe-name">Brand Spoofing & PhishTank Check</span>
+            </div>
+            <span id="probeTag2" class="probe-tag flagged">PayPal Lookalike</span>
+          </li>
+          <li class="probe-item">
+            <div class="probe-meta">
+              <span id="probeDot3" class="probe-dot warn"></span>
+              <span class="probe-name">DNS MX & Reverse PTR Validation</span>
+            </div>
+            <span id="probeTag3" class="probe-tag warn">Missing MX Records</span>
+          </li>
+          <li class="probe-item">
+            <div class="probe-meta">
+              <span id="probeDot4" class="probe-dot flagged"></span>
+              <span class="probe-name">Execution Sandbox & Jitter Probe</span>
+            </div>
+            <span id="probeTag4" class="probe-tag flagged">Webdriver Detected</span>
+          </li>
+          <li class="probe-item">
+            <div class="probe-meta">
+              <span id="probeDot5" class="probe-dot clean"></span>
+              <span class="probe-name">SSL/TLS Handshake Cipher</span>
+            </div>
+            <span id="probeTag5" class="probe-tag clean">TLS 1.3 Strict</span>
+          </li>
         </ul>
       </div>
 
-      <!-- Box 3: Threat Level (radial semi-arc gauge) -->
-      <div class="pg-box">
-        <div class="pg-box-label">Threat Level</div>
-        <div class="pg-gauge-wrap">
-          <div class="pg-gauge">
-            <svg viewBox="0 0 200 120" preserveAspectRatio="none">
-              <!-- track arc -->
-              <path d="M 20 110 A 80 80 0 0 1 180 110"
-                    fill="none" stroke="#232D3B" stroke-width="14" stroke-linecap="round"/>
-              <!-- value arc: 0% risk -> tiny green arc going up-left to the 0 mark -->
-              <path id="pgArc" d="M 20 110 A 80 80 0 0 1 100 110"
-                    fill="none" stroke="#10B981" stroke-width="14" stroke-linecap="round"
-                    stroke-dasharray="251 251" stroke-dashoffset="251"/>
-              <!-- pointer resting at bottom-left (0%) -->
-              <line id="pgNeedle" x1="20" y1="110" x2="26" y2="80"
-                    stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
+      <!-- Panel 3: Threat Score Gauge -->
+      <div class="soc-card">
+        <div class="soc-card-header">
+          <div class="soc-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Threat Score & Severity
+          </div>
+          <span style="font-size:0.72rem; color:var(--text-sub);">AI Confidence: <strong id="valConf" style="color:var(--text);">96.8%</strong></span>
+        </div>
+
+        <div class="gauge-container">
+          <div class="gauge-svg-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 120">
+              <defs>
+                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#10B981"/>
+                  <stop offset="50%" stop-color="#F59E0B"/>
+                  <stop offset="100%" stop-color="#EF4444"/>
+                </linearGradient>
+              </defs>
+              <!-- Arc track -->
+              <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#1E293B" stroke-width="14" stroke-linecap="round"/>
+              <!-- Colored arc overlay -->
+              <path id="gaugeArc" d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="url(#gaugeGradient)" stroke-width="14" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="30"/>
+              <!-- Needle -->
+              <line id="gaugeNeedle" x1="100" y1="110" x2="165" y2="55" stroke="#EF4444" stroke-width="3.5" stroke-linecap="round"/>
+              <circle cx="100" cy="110" r="7" fill="#EF4444"/>
             </svg>
+            <div class="gauge-center-readout">
+              <div id="gaugeScore" class="gauge-score-value" style="color: var(--crimson);">94</div>
+              <div class="gauge-score-label">RISK INDEX / 100</div>
+            </div>
           </div>
-          <div class="pg-gauge-center pg-gauge-pct" id="pgGaugePct">0% Risk</div>
-        </div>
-        <div class="pg-gauge-under">Radial Dial · Semi-Arc</div>
-      </div>
-    </section>
 
-    <!-- 3. Statistics Summary Row -->
-    <section class="pg-stats">
-      <div class="pg-stat">
-        <div class="pg-stat-value" id="pgChecks">4 Probes</div>
-        <div class="pg-stat-label">Checks Run</div>
-      </div>
-      <div class="pg-stat">
-        <div class="pg-stat-value green" id="pgSignals">0 Flagged</div>
-        <div class="pg-stat-label">Signals Found</div>
-      </div>
-      <div class="pg-stat">
-        <div class="pg-stat-value" id="pgConfidence">0.0%</div>
-        <div class="pg-stat-label">Confidence</div>
-      </div>
-    </section>
-
-    <!-- 4. Environment Profile Presets -->
-    <section class="pg-presets">
-      <div class="pg-presets-title">Target Profile Environment Preset</div>
-      <div class="pg-pills" id="pgPills">
-        <button class="pg-pill active" data-preset="consumer">Consumer Desktop</button>
-        <button class="pg-pill" data-preset="headless">Headless Scanner</button>
-        <button class="pg-pill" data-preset="sandbox">Analysis Sandbox</button>
-        <button class="pg-pill" data-preset="custom">Custom</button>
-      </div>
-    </section>
-
-    <!-- 5. Detailed Technical Probe Controls -->
-    <section class="pg-tech">
-      <div class="pg-tech-item">
-        <div class="pg-tech-title">navigator.webdriver</div>
-        <div class="pg-toggle-row">
-          <span class="pg-toggle on" id="tgClean">Clean (false)</span>
-          <span class="pg-toggle off" id="tgFlagged">Flagged (true)</span>
-        </div>
-      </div>
-
-      <div class="pg-tech-item">
-        <div class="pg-tech-title">Reported CPU Cores</div>
-        <div class="pg-slider-row">
-          <div class="pg-slider">
-            <div class="pg-slider-fill" style="--fill: 62%;"></div>
-            <div class="pg-slider-thumb" style="--fill: 62%;"></div>
+          <div id="threatLevelTag" class="threat-level-tag danger">
+            CRITICAL PHISHING RISK
           </div>
-          <div class="pg-slider-value" id="coresVal">8 Cores</div>
+
+          <div class="mitre-pill-row">
+            <span class="mitre-pill">MITRE T1566.002</span>
+            <span class="mitre-pill">Credential Harvest</span>
+            <span class="mitre-pill">Brand Spoofing</span>
+          </div>
         </div>
       </div>
 
-      <div class="pg-tech-item">
-        <div class="pg-tech-title">Execution Loop Jitter</div>
-        <div class="pg-slider-row">
-          <div class="pg-slider">
-            <div class="pg-slider-fill" style="--fill: 4%;"></div>
-            <div class="pg-slider-thumb" style="--fill: 4%;"></div>
-          </div>
-          <div class="pg-slider-value" id="jitterVal">4 ms</div>
-        </div>
+    </main>
+
+    <!-- 4. Quick Telemetry Metrics Bar -->
+    <section class="soc-stats-bar">
+      <div class="stat-tile">
+        <div class="stat-tile-label">Checks Evaluated</div>
+        <div id="statTotalChecks" class="stat-tile-value cyan">32 Probes</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">High-Risk Signals</div>
+        <div id="statFlagged" class="stat-tile-value red">4 Critical</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">AI Heuristic Model</div>
+        <div id="statAiConfidence" class="stat-tile-value green">RandomForest 96.8%</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile-label">Inspection Latency</div>
+        <div id="statLatency" class="stat-tile-value">142 ms</div>
       </div>
     </section>
+
+    <!-- 5. Forensic Deep-Dive Tabs Section -->
+    <section class="soc-forensics">
+      <div class="forensics-header">
+        <div class="forensics-title-group">
+          <h3>Forensic Analysis & Multi-Layer Audit</h3>
+          <p>Inspect raw threat indicators, behavioral traces, brand matching, and network topology.</p>
+        </div>
+
+        <nav class="tabs-nav">
+          <button class="tab-btn active" data-tab="tab-lexical">AI Lexical</button>
+          <button class="tab-btn" data-tab="tab-dns">DNS & Network</button>
+          <button class="tab-btn" data-tab="tab-brand">Brand Match</button>
+          <button class="tab-btn" data-tab="tab-sandbox">Sandbox & Bot</button>
+          <button class="tab-btn" data-tab="tab-redirects">Redirect Trace</button>
+        </nav>
+      </div>
+
+      <!-- Tab 1: AI Lexical Heuristics -->
+      <div id="tab-lexical" class="tab-content active">
+        <div class="lexical-grid">
+          <div class="lexical-box">
+            <div class="lexical-label">Shannon Character Entropy</div>
+            <div id="lexEntropy" class="lexical-metric">4.62 / 5.0</div>
+            <div class="lexical-bar"><div id="barEntropy" class="lexical-bar-fill" style="width: 92%; background: var(--crimson);"></div></div>
+            <div class="lexical-desc">High entropy indicates randomized or obfuscated token structures common in attack URLs.</div>
+          </div>
+          <div class="lexical-box">
+            <div class="lexical-label">Suspicious Keyword Density</div>
+            <div id="lexKeywords" class="lexical-metric">3 Detected</div>
+            <div class="lexical-bar"><div id="barKeywords" class="lexical-bar-fill" style="width: 75%; background: var(--crimson);"></div></div>
+            <div class="lexical-desc">Matched credential-harvesting tokens: <code>verification</code>, <code>portal</code>, <code>login</code>.</div>
+          </div>
+          <div class="lexical-box">
+            <div class="lexical-label">Subdomain Depth & Homoglyphs</div>
+            <div id="lexSubdomains" class="lexical-metric">3 Levels (Normal)</div>
+            <div class="lexical-bar"><div id="barSubdomains" class="lexical-bar-fill" style="width: 30%; background: var(--emerald);"></div></div>
+            <div class="lexical-desc">Punycode / IDN spoofing check: clean. No Cyrillic character substitution.</div>
+          </div>
+          <div class="lexical-box">
+            <div class="lexical-label">Total URL Length</div>
+            <div id="lexLength" class="lexical-metric">58 Characters</div>
+            <div class="lexical-bar"><div id="barLength" class="lexical-bar-fill" style="width: 48%; background: var(--indigo);"></div></div>
+            <div class="lexical-desc">URL length is within normal bounds (typical malicious URLs exceed 75 chars).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: DNS & Network Telemetry -->
+      <div id="tab-dns" class="tab-content">
+        <table class="dns-table">
+          <thead>
+            <tr>
+              <th>Record Type</th>
+              <th>Host / Query</th>
+              <th>Resolved Value</th>
+              <th>TTL</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="dnsTableBody">
+            <tr>
+              <td><strong>A (IPv4)</strong></td>
+              <td>paypal-security-verification-portal.com</td>
+              <td><code>185.193.125.77</code></td>
+              <td>300s</td>
+              <td><span class="status-pill warn">Suspicious ASN</span></td>
+            </tr>
+            <tr>
+              <td><strong>MX</strong></td>
+              <td>paypal-security-verification-portal.com</td>
+              <td><em>(None configured)</em></td>
+              <td>—</td>
+              <td><span class="status-pill phish">Flagged (No Mail Server)</span></td>
+            </tr>
+            <tr>
+              <td><strong>NS</strong></td>
+              <td>paypal-security-verification-portal.com</td>
+              <td><code>dns1.registrar-servers.com</code></td>
+              <td>86400s</td>
+              <td><span class="status-pill safe">Valid</span></td>
+            </tr>
+            <tr>
+              <td><strong>SPF / DMARC</strong></td>
+              <td>paypal-security-verification-portal.com</td>
+              <td><em>v=spf1 -all (Reject)</em></td>
+              <td>3600s</td>
+              <td><span class="status-pill safe">Present</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tab 3: Visual Brand Match -->
+      <div id="tab-brand" class="tab-content">
+        <div class="brand-match-card">
+          <div class="brand-avatar" id="brandAvatar">💳</div>
+          <div class="brand-details">
+            <h4 id="brandTargetName">Impersonated Brand: PayPal Holdings, Inc.</h4>
+            <p id="brandTargetDesc">Target domain contains the protected brand token "paypal" but is hosted on an unauthorized ASN not owned by PayPal, Inc. (AS11643).</p>
+            <div style="margin-top: 10px; font-size: 0.75rem; color: var(--text-sub);">
+              Legitimate Domain: <strong style="color: var(--emerald);">paypal.com</strong> · Levenshtein Distance: <strong>32</strong>
+            </div>
+          </div>
+          <div class="brand-sim-meter">
+            <div class="lexical-label">Visual Logo Similarity</div>
+            <div id="brandSimilarityPct" class="brand-sim-pct">91.4%</div>
+            <span class="status-pill phish" style="margin-top: 4px;">High Confidence Spoof</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Sandbox & Anti-Bot Controls -->
+      <div id="tab-sandbox" class="tab-content">
+        <div class="sandbox-controls-grid">
+          <div class="sandbox-control-tile">
+            <div class="control-title">
+              <span>navigator.webdriver</span>
+              <span id="badgeWd" class="status-pill phish">True (Automated)</span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Simulate whether browser exposes headless automation flags.</p>
+            <div class="toggle-switch-row">
+              <button class="toggle-btn" id="btnWdClean">Clean (false)</button>
+              <button class="toggle-btn active" id="btnWdFlagged">Flagged (true)</button>
+            </div>
+          </div>
+
+          <div class="sandbox-control-tile">
+            <div class="control-title">
+              <span>Reported Hardware Concurrency</span>
+              <span id="coresDisplay" style="color: var(--cyan); font-weight: bold;">8 Cores</span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Virtual machine & worker core detection spoofing.</p>
+            <div class="slider-container">
+              <div class="slider-track">
+                <div class="slider-fill" style="width: 50%;"></div>
+                <div class="slider-thumb" style="left: 50%;"></div>
+              </div>
+              <div class="slider-value">8 Cores</div>
+            </div>
+          </div>
+
+          <div class="sandbox-control-tile">
+            <div class="control-title">
+              <span>High-Res Jitter Loop Delay</span>
+              <span id="jitterDisplay" style="color: var(--amber); font-weight: bold;">12 ms</span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Timing attacks used by malicious landing pages to detect sandbox environments.</p>
+            <div class="slider-container">
+              <div class="slider-track">
+                <div class="slider-fill" style="width: 30%; background: var(--amber);"></div>
+                <div class="slider-thumb" style="left: 30%; border-color: var(--amber);"></div>
+              </div>
+              <div class="slider-value">12 ms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 5: Redirect Tracer -->
+      <div id="tab-redirects" class="tab-content">
+        <div class="redirect-flow-timeline" id="redirectFlowList">
+          <div class="redirect-hop-node">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-sub); text-transform: uppercase; font-weight: bold;">Hop 1 (Initial Shortener)</div>
+              <div class="hop-url">https://bit.ly/3xVerifyAccount-Portal</div>
+            </div>
+            <span class="hop-badge redirect">301 Moved Permanently</span>
+          </div>
+
+          <div class="redirect-hop-node">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-sub); text-transform: uppercase; font-weight: bold;">Hop 2 (Middle Traffic Gateway)</div>
+              <div class="hop-url">https://security-tracker-forwarder.site/session-auth?id=99281</div>
+            </div>
+            <span class="hop-badge redirect">302 Found</span>
+          </div>
+
+          <div class="redirect-hop-node">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--crimson); text-transform: uppercase; font-weight: bold;">Hop 3 (Malicious Phishing Landing Page)</div>
+              <div class="hop-url" style="color: #FCA5A5;">https://paypal-security-verification-portal.com/login</div>
+            </div>
+            <span class="hop-badge final-danger">200 OK · Phishing Payload</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 6. Recent Incident Log -->
+    <section class="soc-incidents">
+      <div class="soc-card-header">
+        <div class="soc-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Recent Threat Scans & Audit Log
+        </div>
+        <span style="font-size:0.75rem; color:var(--text-sub);">Real-time Telemetry Feed</span>
+      </div>
+
+      <div class="incidents-table-wrap">
+        <table class="incidents-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Target URL</th>
+              <th>Verdict</th>
+              <th>Risk Score</th>
+              <th>Primary Indicator</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="incidentsBody">
+            <tr>
+              <td>2 mins ago</td>
+              <td><code>paypal-security-verification-portal.com/login</code></td>
+              <td><span class="status-pill phish">Phishing</span></td>
+              <td><strong style="color: var(--crimson);">94 / 100</strong></td>
+              <td>Brand impersonation (PayPal)</td>
+              <td><a href="#" style="color: var(--indigo); font-weight: 700; text-decoration: none;">View Audit</a></td>
+            </tr>
+            <tr>
+              <td>14 mins ago</td>
+              <td><code>appleid-support-icloud-secure.net/auth</code></td>
+              <td><span class="status-pill phish">Phishing</span></td>
+              <td><strong style="color: var(--crimson);">88 / 100</strong></td>
+              <td>Typosquatting & Fresh Domain</td>
+              <td><a href="#" style="color: var(--indigo); font-weight: 700; text-decoration: none;">View Audit</a></td>
+            </tr>
+            <tr>
+              <td>35 mins ago</td>
+              <td><code>192.241.218.42/tracking-redirect.php</code></td>
+              <td><span class="status-pill warn">Suspicious</span></td>
+              <td><strong style="color: var(--amber);">62 / 100</strong></td>
+              <td>IP Hostname & High Jitter</td>
+              <td><a href="#" style="color: var(--indigo); font-weight: 700; text-decoration: none;">View Audit</a></td>
+            </tr>
+            <tr>
+              <td>1 hour ago</td>
+              <td><code>accounts.google.com/signin/v2/identifier</code></td>
+              <td><span class="status-pill safe">Verified Safe</span></td>
+              <td><strong style="color: var(--emerald);">2 / 100</strong></td>
+              <td>Authentic EV SSL & Clean Reputation</td>
+              <td><a href="#" style="color: var(--indigo); font-weight: 700; text-decoration: none;">View Audit</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. Footer -->
+    <footer class="soc-footer">
+      <div>
+        PhishGuard Security Suite · Enterprise Protection Engine v2.4
+      </div>
+      <div>
+        Powered by AI Feature Classification · DNS Intelligence · Headless Sandbox
+      </div>
+    </footer>
+
   </div>
 
+  <!-- Interactive Dashboard Controller -->
   <script>
-    // ============================================================
-    // PhishGuard — Dashboard controller (optional interactivity)
-    // Exposes PG_DASH for integration with Flask/React.
-    // ============================================================
     (function () {
       "use strict";
 
-      var presets = {
-        consumer: { checks: 4, signals: 0, conf: 0.0, cores: 8, jitter: 4, needle: 0 },
-        headless: { checks: 4, signals: 3, conf: 0.64, cores: 16, jitter: 9, needle: 52 },
-        sandbox:  { checks: 4, signals: 4, conf: 0.90, cores: 8,  jitter: 14, needle: 86 },
-        custom:   { checks: 4, signals: 0, conf: 0.0, cores: 8,  jitter: 4, needle: 0 }
+      // --- Scenario Profiles Data ---
+      const SCENARIOS = {
+        paypal: {
+          url: "https://paypal-security-verification-portal.com/login",
+          domain: "paypal-security-verification-portal.com",
+          ip: "185.193.125.77",
+          asn: "NameCheap / AS202685",
+          age: "3 Days (Freshly Registered)",
+          ssl: "Let's Encrypt (DV Validated)",
+          score: 94,
+          conf: "96.8%",
+          verdictText: "🚨 Malicious Target: Brand Impersonation Flagged",
+          verdictType: "danger",
+          threatLevel: "CRITICAL PHISHING RISK",
+          probes: [
+            { dot: "flagged", tag: "High Entropy (4.62)", type: "flagged" },
+            { dot: "flagged", tag: "PayPal Lookalike", type: "flagged" },
+            { dot: "warn", tag: "Missing MX Records", type: "warn" },
+            { dot: "flagged", tag: "Webdriver Detected", type: "flagged" },
+            { dot: "clean", tag: "TLS 1.3 Strict", type: "clean" }
+          ],
+          brand: {
+            icon: "💳",
+            name: "Impersonated Brand: PayPal Holdings, Inc.",
+            desc: "Target domain contains the protected brand token 'paypal' but is hosted on an unauthorized ASN not owned by PayPal, Inc.",
+            similarity: "91.4%"
+          },
+          redirects: [
+            { hop: "Hop 1 (Initial Shortener)", url: "https://bit.ly/3xVerifyAccount-Portal", status: "301 Moved Permanently", type: "redirect" },
+            { hop: "Hop 2 (Middle Traffic Gateway)", url: "https://security-tracker-forwarder.site/session-auth?id=99281", status: "302 Found", type: "redirect" },
+            { hop: "Hop 3 (Malicious Phishing Landing Page)", url: "https://paypal-security-verification-portal.com/login", status: "200 OK · Phishing Payload", type: "final-danger" }
+          ]
+        },
+        apple: {
+          url: "https://appleid-support-icloud-secure.net/auth",
+          domain: "appleid-support-icloud-secure.net",
+          ip: "194.26.29.112",
+          asn: "Hostinger / AS47583",
+          age: "1 Day (Registered Yesterday)",
+          ssl: "cPanel Self-Signed",
+          score: 88,
+          conf: "94.2%",
+          verdictText: "🚨 Malicious Target: Apple ID Credential Harvester",
+          verdictType: "danger",
+          threatLevel: "CRITICAL PHISHING RISK",
+          probes: [
+            { dot: "flagged", tag: "High Entropy (4.38)", type: "flagged" },
+            { dot: "flagged", tag: "Apple/iCloud Lookalike", type: "flagged" },
+            { dot: "flagged", tag: "Unresolvable MX", type: "flagged" },
+            { dot: "warn", tag: "Headless Obfuscation", type: "warn" },
+            { dot: "warn", tag: "Weak Cipher Suite", type: "warn" }
+          ],
+          brand: {
+            icon: "🍏",
+            name: "Impersonated Brand: Apple Inc.",
+            desc: "Target domain mimics Apple ID / iCloud authentication portal. Steals user credentials and two-factor SMS OTP tokens.",
+            similarity: "89.2%"
+          },
+          redirects: [
+            { hop: "Hop 1 (Initial Phish Link)", url: "https://appleid-support-icloud-secure.net/auth", status: "200 OK · Direct Credential Harvester", type: "final-danger" }
+          ]
+        },
+        suspicious: {
+          url: "http://192.241.218.42/tracking-redirect.php?token=x991b",
+          domain: "192.241.218.42 (Raw IP Host)",
+          ip: "192.241.218.42",
+          asn: "DigitalOcean / AS14061",
+          age: "Unknown (Direct IP)",
+          ssl: "No SSL (Plaintext HTTP)",
+          score: 62,
+          conf: "82.5%",
+          verdictText: "⚠️ Suspicious Target: Direct IP Host & Missing SSL",
+          verdictType: "warn",
+          threatLevel: "ELEVATED SUSPICIOUS RISK",
+          probes: [
+            { dot: "warn", tag: "Raw IP Hostname", type: "warn" },
+            { dot: "clean", tag: "No Brand Spoof", type: "clean" },
+            { dot: "warn", tag: "High Jitter (18ms)", type: "warn" },
+            { dot: "flagged", tag: "Unencrypted HTTP", type: "flagged" },
+            { dot: "warn", tag: "Fast-Flux Behavior", type: "warn" }
+          ],
+          brand: {
+            icon: "🌐",
+            name: "No Recognized Brand Target",
+            desc: "Direct IP access with execution loop jitter. Often serves as an intermediate redirector or affiliate exploit kit.",
+            similarity: "0.0%"
+          },
+          redirects: [
+            { hop: "Hop 1 (Direct IP Entry)", url: "http://192.241.218.42/tracking-redirect.php", status: "302 Found", type: "redirect" },
+            { hop: "Hop 2 (Obfuscated Cloud Flare CDN)", url: "https://cdn-update-auth.com/loader", status: "200 OK", type: "redirect" }
+          ]
+        },
+        google: {
+          url: "https://accounts.google.com/signin/v2/identifier",
+          domain: "accounts.google.com",
+          ip: "142.250.190.46",
+          asn: "Google LLC / AS15169",
+          age: "26 Years (Established 1997)",
+          ssl: "Google Trust Services (EV Validated)",
+          score: 2,
+          conf: "99.9%",
+          verdictText: "🛡️ Verified Clean: Authentic Google Authentication Portal",
+          verdictType: "safe",
+          threatLevel: "VERIFIED SAFE WEBSITE",
+          probes: [
+            { dot: "clean", tag: "Normal Entropy (2.81)", type: "clean" },
+            { dot: "clean", tag: "Verified Official Host", type: "clean" },
+            { dot: "clean", tag: "Valid Google MX (5 Servers)", type: "clean" },
+            { dot: "clean", tag: "Standard Environment", type: "clean" },
+            { dot: "clean", tag: "Strict TLS 1.3 / HSTS", type: "clean" }
+          ],
+          brand: {
+            icon: "🔍",
+            name: "Authentic Entity: Google LLC",
+            desc: "Domain belongs to official Google infrastructure. Extended validation certificate and clean PhishTank reputation.",
+            similarity: "100.0% (Legitimate Domain)"
+          },
+          redirects: [
+            { hop: "Hop 1 (Direct Landing)", url: "https://accounts.google.com/signin/v2/identifier", status: "200 OK · Official TLS Handshake", type: "final-safe" }
+          ]
+        }
       };
 
-      var activePreset = "consumer";
+      // --- Gauge Needle Setter ---
+      function updateGauge(score) {
+        const scoreElem = document.getElementById("gaugeScore");
+        const needle = document.getElementById("gaugeNeedle");
+        const arc = document.getElementById("gaugeArc");
 
-      function setStats(signals, conf, checks) {
-        var sign = document.getElementById("pgSignals");
-        var cnf = document.getElementById("pgConfidence");
-        var chk = document.getElementById("pgChecks");
-        if (sign) {
-          sign.textContent = signals + " Flagged";
-          sign.style.color = signals > 0 ? "#EF4444" : "#10B981";
+        if (scoreElem) {
+          scoreElem.textContent = score;
+          if (score >= 70) scoreElem.style.color = "var(--crimson)";
+          else if (score >= 40) scoreElem.style.color = "var(--amber)";
+          else scoreElem.style.color = "var(--emerald)";
         }
-        if (cnf) cnf.textContent = (conf * 100).toFixed(1) + "%";
-        if (chk) chk.textContent = checks + " Probes";
 
-        var pct = document.getElementById("pgGaugePct");
-        if (pct) pct.textContent = Math.round(conf * 100) + "% Risk";
-      }
+        // 251.2 is max arc length (semi-circle perimeter).
+        // Map 0 -> offset 251.2, 100 -> offset 0
+        if (arc) {
+          const offset = 251.2 - (score / 100) * 251.2;
+          arc.style.strokeDashoffset = offset.toFixed(1);
+        }
 
-      function setNeedle(pct) {
-        // pct = 0..100 ; map to arc angle from bottom-left (0%) to bottom-right (100%)
-        // 0% -> left endpoint (20,110), 100% -> right endpoint (180,110).
-        var angle = -90 + (pct / 100) * 180; // degrees, CCW from up
-        var r = 80, cx = 100, cy = 110;
-        var a = angle * Math.PI / 180;
-        var x2 = cx + r * Math.cos(a);
-        var y2 = cy + r * Math.sin(a);
-        var needle = document.getElementById("pgNeedle");
+        // Needle angle: 0% -> -90 deg (left), 100% -> +90 deg (right)
         if (needle) {
-          needle.setAttribute("x1", cx);
-          needle.setAttribute("y1", cy);
-          needle.setAttribute("x2", x2.toFixed(2));
-          needle.setAttribute("y2", y2.toFixed(2));
+          const angle = -90 + (score / 100) * 180;
+          const r = 68, cx = 100, cy = 110;
+          const rad = (angle * Math.PI) / 180;
+          const x2 = cx + r * Math.cos(rad);
+          const y2 = cy + r * Math.sin(rad);
+          needle.setAttribute("x2", x2.toFixed(1));
+          needle.setAttribute("y2", y2.toFixed(1));
+
+          const color = score >= 70 ? "#EF4444" : (score >= 40 ? "#F59E0B" : "#10B981");
+          needle.setAttribute("stroke", color);
         }
       }
 
-      function applyPreset(name) {
-        var p = presets[name] || presets.consumer;
-        setStats(p.signals, p.conf, p.checks);
-        setNeedle(p.needle);
+      // --- Apply Scenario ---
+      function applyScenario(key) {
+        const s = SCENARIOS[key];
+        if (!s) return;
 
-        var cores = document.getElementById("coresVal");
-        if (cores) cores.textContent = p.cores + " Cores";
-        var jitter = document.getElementById("jitterVal");
-        if (jitter) jitter.textContent = p.jitter + " ms";
+        // Input
+        const urlInput = document.getElementById("socUrlInput");
+        if (urlInput) urlInput.value = s.url;
 
-        document.querySelectorAll(".pg-pill").forEach(function (b) {
-          b.classList.toggle("active", b.getAttribute("data-preset") === name);
+        // Identity
+        const domainTag = document.getElementById("nodeDomainTag");
+        if (domainTag) domainTag.textContent = s.domain;
+
+        const banner = document.getElementById("nodeVerdictBanner");
+        if (banner) {
+          banner.className = "node-verdict-banner " + s.verdictType;
+          banner.textContent = s.verdictText;
+        }
+
+        document.getElementById("nodeIp").textContent = s.ip;
+        document.getElementById("nodeAsn").textContent = s.asn;
+        document.getElementById("nodeAge").textContent = s.age;
+        document.getElementById("nodeSsl").textContent = s.ssl;
+
+        // Confidence
+        document.getElementById("valConf").textContent = s.conf;
+
+        // Gauge
+        updateGauge(s.score);
+
+        // Threat Tag
+        const threatTag = document.getElementById("threatLevelTag");
+        if (threatTag) {
+          threatTag.className = "threat-level-tag " + s.verdictType;
+          threatTag.textContent = s.threatLevel;
+        }
+
+        // Probes
+        s.probes.forEach((p, idx) => {
+          const dot = document.getElementById("probeDot" + (idx + 1));
+          const tag = document.getElementById("probeTag" + (idx + 1));
+          if (dot) dot.className = "probe-dot " + p.dot;
+          if (tag) {
+            tag.className = "probe-tag " + p.type;
+            tag.textContent = p.tag;
+          }
+        });
+
+        // Brand
+        document.getElementById("brandAvatar").textContent = s.brand.icon;
+        document.getElementById("brandTargetName").textContent = s.brand.name;
+        document.getElementById("brandTargetDesc").textContent = s.brand.desc;
+        const brandSim = document.getElementById("brandSimilarityPct");
+        if (brandSim) {
+          brandSim.textContent = s.brand.similarity;
+          brandSim.style.color = s.score >= 70 ? "var(--crimson)" : (s.score >= 40 ? "var(--amber)" : "var(--emerald)");
+        }
+
+        // Redirects
+        const redirectContainer = document.getElementById("redirectFlowList");
+        if (redirectContainer) {
+          redirectContainer.innerHTML = s.redirects.map(r => `
+            <div class="redirect-hop-node">
+              <div>
+                <div style="font-size: 0.72rem; color: var(--text-sub); text-transform: uppercase; font-weight: bold;">${r.hop}</div>
+                <div class="hop-url">${r.url}</div>
+              </div>
+              <span class="hop-badge ${r.type}">${r.status}</span>
+            </div>
+          `).join("");
+        }
+
+        // Highlight active pill
+        document.querySelectorAll(".preset-pill").forEach(btn => {
+          btn.classList.toggle("active", btn.getAttribute("data-scenario") === key);
         });
       }
 
-      var pillBag = document.getElementById("pgPills");
-      if (pillBag) {
-        pillBag.addEventListener("click", function (e) {
-          var btn = e.target.closest(".pg-pill");
-          if (!btn) return;
-          applyPreset(btn.getAttribute("data-preset"));
+      // --- Tab Switching ---
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+          btn.classList.add("active");
+          const targetId = btn.getAttribute("data-tab");
+          const targetContent = document.getElementById(targetId);
+          if (targetContent) targetContent.classList.add("active");
+        });
+      });
+
+      // --- Preset Pill Clicks ---
+      document.querySelectorAll(".preset-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+          applyScenario(pill.getAttribute("data-scenario"));
+        });
+      });
+
+      // --- Run Scan Button Action ---
+      const runBtn = document.getElementById("btnRunScan");
+      if (runBtn) {
+        runBtn.addEventListener("click", () => {
+          const input = document.getElementById("socUrlInput");
+          const val = input ? input.value.toLowerCase() : "";
+          
+          runBtn.innerHTML = `<span style="display:inline-block;animation:spinSlow 1s linear infinite;">⏳</span> Inspecting Target...`;
+          runBtn.disabled = true;
+
+          setTimeout(() => {
+            runBtn.innerHTML = `
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Run Deep Forensic Scan
+            `;
+            runBtn.disabled = false;
+
+            if (val.includes("paypal")) applyScenario("paypal");
+            else if (val.includes("apple") || val.includes("icloud")) applyScenario("apple");
+            else if (val.includes("google")) applyScenario("google");
+            else if (/^\d{1,3}\./.test(val) || val.includes("192.") || val.includes("185.")) applyScenario("suspicious");
+            else applyScenario("paypal");
+          }, 450);
         });
       }
 
-      // initial render
-      applyPreset(activePreset);
+      // Initialize default
+      applyScenario("paypal");
 
-      // Public API for external frameworks
-      window.PG_DASH = {
-        applyPreset: applyPreset,
-        setStats: setStats,
-        setNeedle: setNeedle
+      // Global API for testing
+      window.PHISHGUARD_SOC = {
+        applyScenario: applyScenario,
+        updateGauge: updateGauge
       };
     })();
   </script>

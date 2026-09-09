@@ -66,6 +66,14 @@ function buildChromium() {
   const out = path.join(BUILD, "chromium");
   cleanDir(out);
   copyDir(SRC, out);
+  // The source manifest is dual-browser (service_worker + scripts). Web stores
+  // for Chrome/Edge reject `background.scripts` with MV3, so strip any
+  // Firefox-only keys from the packaged copy.
+  const manifestPath = path.join(out, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  delete manifest.background.scripts;
+  delete manifest.browser_specific_settings;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
   const zipPath = path.join(DIST, "phishguard-chromium.zip");
   zipDir(out, zipPath);
   console.log("      -> " + zipPath);
@@ -94,7 +102,7 @@ function buildFirefox() {
   manifest.browser_specific_settings = {
     gecko: {
       id: FIREFOX_GECKO_ID,
-      strict_min_version: "109.0",
+      strict_min_version: "112.0",
     },
   };
 
@@ -153,6 +161,13 @@ if (typeof browser !== "undefined" && !globalThis.__pgPolyfill) {
   const zipPath = path.join(DIST, "phishguard-firefox.zip");
   zipDir(out, zipPath);
   console.log("      -> " + zipPath);
+
+  // Also keep an unpacked folder so Firefox can load it directly via
+  // about:debugging -> Load Temporary Add-on (no unzipping needed).
+  const unpacked = path.join(DIST, "firefox");
+  cleanDir(unpacked);
+  fs.cpSync(out, unpacked, { recursive: true });
+  console.log("      -> " + unpacked + "  (load-unpacked folder for Firefox)");
 }
 
 // ---------------------------------------------------------------------------

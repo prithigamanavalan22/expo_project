@@ -1,25 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "PhishGuard — URL Phishing Detector",
+  "name": "PhishGuard - URL Phishing Detector",
   "version": "1.0.0",
   "description": "Real-time URL phishing detection powered by machine learning. Alerts you before you visit a malicious site.",
-
   "permissions": [
     "activeTab",
     "storage",
     "scripting",
     "tabs"
   ],
-
   "host_permissions": [
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*"
   ],
-
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
-
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -28,7 +25,6 @@
       "128": "icons/icon128.png"
     }
   },
-
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -37,10 +33,15 @@
       "run_at": "document_idle"
     }
   ],
-
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "phishguard@local.example",
+      "strict_min_version": "112.0"
+    }
   }
 }
